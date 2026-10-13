@@ -2,7 +2,7 @@
 
 A menu bar switch that keeps a MacBook running with the lid closed, so CLI agents such as Claude Code, Droid and Codex keep working. It turns itself off and sleeps the Mac at a battery cutoff or when the Mac gets too hot.
 
-Version 0.1.0. macOS 14 or later. Apple silicon and Intel. No network calls.
+Version 0.2.0. macOS 14 or later. Apple silicon and Intel. No network calls.
 
 ## Build
 
@@ -10,19 +10,28 @@ Version 0.1.0. macOS 14 or later. Apple silicon and Intel. No network calls.
 ./build.sh                  # makes build/LidAwake.app, ad-hoc signed
 sh scripts/selftest.sh      # checks the scripts, no root, no system changes
 build/LidAwake.app/Contents/MacOS/LidAwake --selftest
+
+# Render a window state to PNG without touching sleep settings
+build/LidAwake.app/Contents/MacOS/LidAwake --preview-guide setUp --snapshot /tmp/setup.png
+#   states: setUp, turnOn, waiting, success, successOn, info (add --helper-ready)
+build/LidAwake.app/Contents/MacOS/LidAwake --preview-hud on --snapshot /tmp/hud.png
 ```
 
 ## Install
 
 1. Copy `build/LidAwake.app` to `/Applications`. Setup runs the bundled scripts as root, so keep the app somewhere only an admin can change.
-2. Open it. A moon icon appears in the menu bar.
-3. Click the icon, then **Set up closed-lid mode…**. Enter your Mac password once.
+2. Open it. A cup icon appears in the menu bar, and a welcome window opens the first time.
+3. Click **Allow closed-lid mode** and enter your Mac password once. The window confirms and closes by itself.
 
 Setup adds `/etc/sudoers.d/lidawake`, which lets your user run only `pmset -a disablesleep 0` and `pmset -a disablesleep 1` without a password. It also adds a watchdog LaunchAgent at `~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist`.
 
 ## Use
 
-Click the icon, then **Keep Mac awake**. The icon becomes a filled cup and the menu says "On. Safe to close the lid." Close the lid.
+Click the cup. It starts steaming, and a small bubble says "Awake. Safe to close the lid." Close the lid. Click the cup again to turn it off.
+
+Right-click the cup, or Control-click it, for settings: battery cutoff, How it works, the log, removing the permission, and Quit.
+
+If closed-lid mode is not set up yet, clicking the cup opens the welcome window with **Allow and turn on**, which sets it up and turns it on in one step.
 
 It switches off and sleeps the Mac when:
 

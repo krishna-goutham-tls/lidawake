@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let setupItem = NSMenuItem(title: "Set up closed-lid mode…", action: nil, keyEquivalent: "")
     private let removeItem = NSMenuItem(title: "Remove closed-lid permission", action: nil, keyEquivalent: "")
     private var signalSources: [DispatchSourceSignal] = []
+    private let guide = GuideWindowController()
+    private let hud = StatusHUD()
+    private static let welcomeSeenKey = "hasSeenWelcome"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.write("LidAwake \(Paths.version) started (pid \(ProcessInfo.processInfo.processIdentifier))")
@@ -26,8 +29,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         buildMenu()
-        statusItem.menu = menu
+        if let button = statusItem.button {
+            button.target = self
+            button.action = #selector(statusItemClicked(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
         refreshUI()
+
+        guide.model.runSetup = { [weak self] in self?.performSetup() ?? .cancelled }
+        guide.model.switchOn = { [weak self] in self?.session.switchOn() }
+        if !UserDefaults.standard.bool(forKey: Self.welcomeSeenKey) {
+            UserDefaults.standard.set(true, forKey: Self.welcomeSeenKey)
+            showGuide(.setUp)
+        }
+    }
+
+    private func showGuide(_ intent: GuideIntent) {
+        syncGuide()
+        guide.show(intent)
+    }
+
+    private func syncGuide() {
+        guide.model.helperReady = session.helperInstalled
+        guide.model.cutoff = session.cutoff
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -54,6 +78,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    // MARK: Status item
+
+    /// Click toggles. Right-click, or Control-click, opens the menu.
+    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        let wantsMenu = event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true
+        if wantsMenu {
+            statusItem.menu = menu
+            sender.performClick(nil)
+        } else {
+            primaryToggle()
+        }
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        guard menu === self.menu else { return }
+        statusItem.menu = nil
+    }
+
+    private func primaryToggle() {
+        if !session.isOn {
+            session.refreshHelper()
+            if !session.helperInstalled {
+                showGuide(.turnOn)
+                return
+            }
+        }
+        session.toggle()
+        showHUD()
+    }
+
+    private func showHUD() {
+        guard let button = statusItem.button else { return }
+        if session.isOn {
+            hud.show(
+                from: button, on: true, title: "Awake",
+                detail: session.lidLockActive ? "Safe to close the lid." : "Keep the lid open."
+            )
+        } else if let note = session.note {
+            hud.show(from: button, on: false, title: "Not started", detail: note.replacingOccurrences(of: "Not started: ", with: ""))
+        } else {
+            hud.show(from: button, on: false, title: "Off", detail: "Your Mac sleeps normally.")
+        }
+    }
+
     // MARK: Menu
 
     private func buildMenu() {
@@ -65,7 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         toggleItem.target = self
-        toggleItem.action = #selector(toggleAwake)
+        toggleItem.action = #selector(menuToggle)
         menu.addItem(toggleItem)
 
         cutoffMenu.autoenablesItems = false
@@ -78,6 +147,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         cutoffItem.submenu = cutoffMenu
         menu.addItem(cutoffItem)
         menu.addItem(.separator())
+
+        let howItem = NSMenuItem(title: "How it works", action: #selector(showHowItWorks), keyEquivalent: "")
+        howItem.target = self
+        menu.addItem(howItem)
 
         setupItem.target = self
         setupItem.action = #selector(setUpClosedLid)
@@ -116,8 +189,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func statusText() -> String {
         if session.isOn {
             return session.lidLockActive
-                ? "On. Safe to close the lid."
-                : "On, lid open only. Set up closed-lid mode below."
+                ? "Awake. Safe to close the lid."
+                : "Awake, lid open only."
         }
         return session.note ?? "Off. Your Mac sleeps normally."
     }
@@ -125,15 +198,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateIcon() {
         guard let button = statusItem?.button else { return }
         let symbol: String
+        let fallback: String
         let description: String
         if session.isOn {
-            symbol = session.lidLockActive ? "cup.and.saucer.fill" : "cup.and.saucer"
-            description = session.lidLockActive ? "LidAwake on" : "LidAwake on, lid open only"
+            symbol = session.lidLockActive ? "cup.and.heat.waves.fill" : "cup.and.heat.waves"
+            fallback = "cup.and.saucer.fill"
+            description = session.lidLockActive ? "LidAwake: awake, safe to close the lid" : "LidAwake: awake, lid open only"
         } else {
-            symbol = "moon.zzz"
-            description = "LidAwake off"
+            symbol = "cup.and.saucer"
+            fallback = "cup.and.saucer"
+            description = "LidAwake: off. Click to keep your Mac awake, right-click for settings"
         }
-        if let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description) {
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+            ?? NSImage(systemSymbolName: fallback, accessibilityDescription: description)
+        if let image {
             image.isTemplate = true
             button.image = image
             button.title = ""
@@ -146,8 +224,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: Actions
 
-    @objc private func toggleAwake() {
-        session.toggle()
+    @objc private func menuToggle() {
+        primaryToggle()
+    }
+
+    @objc private func showHowItWorks() {
+        showGuide(.info)
+    }
+
+    /// Runs setup and applies it to a running session. The caller shows the outcome.
+    private func performSetup() -> SetupOutcome {
+        Log.write("closed-lid setup requested")
+        let outcome = HelperSetup.install()
+        switch outcome {
+        case .done: Log.write("closed-lid setup finished")
+        case .cancelled: break
+        case let .failed(message): Log.write("closed-lid setup failed: \(message)")
+        }
+        session.refreshHelper()
+        session.engageLidLock()
+        refreshUI()
+        return outcome
     }
 
     @objc private func chooseCutoff(_ sender: NSMenuItem) {
@@ -155,19 +252,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func setUpClosedLid() {
-        Log.write("closed-lid setup requested")
-        switch HelperSetup.install() {
+        switch performSetup() {
         case .done:
-            Log.write("closed-lid setup finished")
+            syncGuide()
+            guide.showSuccess(.setUp)
         case .cancelled:
             break
         case let .failed(message):
-            Log.write("closed-lid setup failed: \(message)")
             showAlert(title: "Closed-lid setup did not finish", message: message)
         }
-        session.refreshHelper()
-        session.engageLidLock()
-        refreshUI()
     }
 
     @objc private func removeClosedLid() {
