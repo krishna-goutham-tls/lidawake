@@ -17,7 +17,8 @@ fi
 HOME_DIR=${LIDAWAKE_HOME:-$HOME}
 # -------------------------------------------------------------------------
 
-WATCHDOG="$HOME_DIR/Library/Application Support/LidAwake/watchdog.sh"
+WATCHDOG="$HOME_DIR/Library/Application Support/LidAwake/LidAwake Watchdog"
+LEGACY_WATCHDOG="$HOME_DIR/Library/Application Support/LidAwake/watchdog.sh"
 PLIST="$HOME_DIR/Library/LaunchAgents/$LABEL.plist"
 LOG="$HOME_DIR/Library/Logs/LidAwake.log"
 
@@ -32,7 +33,7 @@ else
     launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 fi
 
-if ! rm -f "$PLIST" "$WATCHDOG"; then
+if ! rm -f "$PLIST" "$WATCHDOG" "$LEGACY_WATCHDOG"; then
     echo "LidAwake watchdog removal failed: could not delete files" >&2
     log "watchdog removal failed: could not delete files"
     exit 1

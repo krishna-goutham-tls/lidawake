@@ -19,7 +19,9 @@ HOME_DIR=${LIDAWAKE_HOME:-$HOME}
 # -------------------------------------------------------------------------
 
 SUPPORT_DIR="$HOME_DIR/Library/Application Support/LidAwake"
-WATCHDOG="$SUPPORT_DIR/watchdog.sh"
+# The file name is what macOS shows in its background-item alert and in Login Items.
+WATCHDOG="$SUPPORT_DIR/LidAwake Watchdog"
+LEGACY_WATCHDOG="$SUPPORT_DIR/watchdog.sh"
 AGENTS_DIR="$HOME_DIR/Library/LaunchAgents"
 PLIST="$AGENTS_DIR/$LABEL.plist"
 LOG="$HOME_DIR/Library/Logs/LidAwake.log"
@@ -55,6 +57,7 @@ mkdir -p "$SUPPORT_DIR" "$AGENTS_DIR" || fail "could not create folders"
 tmp_wd="$WATCHDOG.tmp.$$"
 cp "$SRC_DIR/watchdog.sh" "$tmp_wd" && chmod 755 "$tmp_wd" && mv -f "$tmp_wd" "$WATCHDOG" ||
     { rm -f "$tmp_wd"; fail "could not copy watchdog.sh"; }
+rm -f "$LEGACY_WATCHDOG"
 
 tmp_plist="$PLIST.tmp.$$"
 cat >"$tmp_plist" <<EOF || { rm -f "$tmp_plist"; fail "could not write plist"; }
@@ -66,8 +69,11 @@ cat >"$tmp_plist" <<EOF || { rm -f "$tmp_plist"; fail "could not write plist"; }
 	<string>$LABEL</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/bin/sh</string>
 		<string>$(xml_escape "$WATCHDOG")</string>
+	</array>
+	<key>AssociatedBundleIdentifiers</key>
+	<array>
+		<string>space.thelaunch.lidawake</string>
 	</array>
 	<key>StartInterval</key>
 	<integer>60</integer>

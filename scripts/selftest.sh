@@ -100,6 +100,7 @@ else
 fi
 
 # 4. LaunchAgent
+mkdir -p "$SUPPORT" && : >"$SUPPORT/watchdog.sh"
 if out=$(dry sh "$RES/install-watchdog.sh" 2>&1); then pass "install-watchdog.sh dry run"; else fail "install-watchdog.sh dry run" "$out"; fi
 if out=$(dry sh "$RES/install-watchdog.sh" 2>&1); then pass "install-watchdog.sh dry run again (idempotent)"; else fail "install-watchdog.sh dry run again (idempotent)" "$out"; fi
 check "plutil -lint on generated plist" plutil -lint -s "$PLIST"
@@ -107,13 +108,14 @@ pval() { plutil -extract "$1" raw -o - "$PLIST" 2>/dev/null; }
 check "plist Label" [ "$(pval Label)" = "$LABEL" ]
 check "plist StartInterval is 60" [ "$(pval StartInterval)" = 60 ]
 check "plist RunAtLoad is true" [ "$(pval RunAtLoad)" = true ]
-check "plist ProgramArguments[0] is /bin/sh" [ "$(pval ProgramArguments.0)" = /bin/sh ]
-check "plist ProgramArguments[1] is the copied watchdog path, space intact" \
-    [ "$(pval ProgramArguments.1)" = "$SUPPORT/watchdog.sh" ]
-check "plist ProgramArguments has 2 entries" [ "$(plutil -extract ProgramArguments raw -o - "$PLIST" 2>/dev/null)" = 2 ]
+check "plist ProgramArguments[0] is the copied watchdog path, spaces intact" \
+    [ "$(pval ProgramArguments.0)" = "$SUPPORT/LidAwake Watchdog" ]
+check "plist ProgramArguments has 1 entry" [ "$(plutil -extract ProgramArguments raw -o - "$PLIST" 2>/dev/null)" = 1 ]
+check "plist AssociatedBundleIdentifiers names the app" [ "$(pval AssociatedBundleIdentifiers.0)" = space.thelaunch.lidawake ]
+check "legacy watchdog.sh removed on install" [ ! -e "$SUPPORT/watchdog.sh" ]
 check "plist StandardOutPath and StandardErrorPath are /dev/null" \
     [ "$(pval StandardOutPath)$(pval StandardErrorPath)" = /dev/null/dev/null ]
-check "watchdog copied with mode 755" [ "$(stat -f %Lp "$SUPPORT/watchdog.sh" 2>/dev/null)" = 755 ]
+check "watchdog copied with mode 755" [ "$(stat -f %Lp "$SUPPORT/LidAwake Watchdog" 2>/dev/null)" = 755 ]
 
 # 5. Watchdog
 NOAPP=lidawake-selftest-no-such-process
@@ -150,7 +152,7 @@ check "watchdog log line written" grep -q '\[watchdog\] app not running, restore
 # 7. Uninstall watchdog
 out1=$(dry sh "$RES/uninstall-watchdog.sh" 2>&1); rc1=$?
 out2=$(dry sh "$RES/uninstall-watchdog.sh" 2>&1); rc2=$?
-if [ $rc1 -eq 0 ] && [ $rc2 -eq 0 ] && [ "$out1" = "$out2" ] && [ ! -e "$PLIST" ] && [ ! -e "$SUPPORT/watchdog.sh" ]; then
+if [ $rc1 -eq 0 ] && [ $rc2 -eq 0 ] && [ "$out1" = "$out2" ] && [ ! -e "$PLIST" ] && [ ! -e "$SUPPORT/LidAwake Watchdog" ]; then
     pass "uninstall-watchdog.sh dry run, twice"
 else
     fail "uninstall-watchdog.sh dry run, twice" "$out1"

@@ -6,14 +6,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()
     private let statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-    private let toggleItem = NSMenuItem(title: "Keep Mac awake", action: nil, keyEquivalent: "")
+    private let toggleItem = NSMenuItem(title: "Turn on", action: nil, keyEquivalent: "")
     private let cutoffItem = NSMenuItem(title: "Stop at battery", action: nil, keyEquivalent: "")
     private let cutoffMenu = NSMenu()
     private let setupItem = NSMenuItem(title: "Set up closed-lid mode…", action: nil, keyEquivalent: "")
     private let removeItem = NSMenuItem(title: "Remove closed-lid permission", action: nil, keyEquivalent: "")
     private var signalSources: [DispatchSourceSignal] = []
-    private let guide = GuideWindowController()
-    private let hud = StatusHUD()
+    private let panel = PanelController()
     private static let welcomeSeenKey = "hasSeenWelcome"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -25,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
 
         session.recoverOnLaunch()
+        HelperSetup.upgradeWatchdogIfNeeded()
         session.onChange = { [weak self] in self?.refreshUI() }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -36,22 +36,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         refreshUI()
 
-        guide.model.runSetup = { [weak self] in self?.performSetup() ?? .cancelled }
-        guide.model.switchOn = { [weak self] in self?.session.switchOn() }
+        panel.model.runSetup = { [weak self] in self?.performSetup() ?? .cancelled }
+        panel.model.switchOn = { [weak self] in
+            self?.session.switchOn()
+            self?.showFeedback()
+        }
         if !UserDefaults.standard.bool(forKey: Self.welcomeSeenKey) {
             UserDefaults.standard.set(true, forKey: Self.welcomeSeenKey)
-            showGuide(.setUp)
+            // The status item has no position on screen until the first layout pass.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self else { return }
+                self.showPanel(self.session.helperInstalled ? .info : .setUp(turnOn: false))
+            }
         }
     }
 
-    private func showGuide(_ intent: GuideIntent) {
-        syncGuide()
-        guide.show(intent)
-    }
-
-    private func syncGuide() {
-        guide.model.helperReady = session.helperInstalled
-        guide.model.cutoff = session.cutoff
+    private func showPanel(_ screen: PanelScreen) {
+        guard let button = statusItem.button else { return }
+        panel.model.cutoff = session.cutoff
+        panel.show(screen, from: button)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -101,26 +104,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !session.isOn {
             session.refreshHelper()
             if !session.helperInstalled {
-                showGuide(.turnOn)
+                showPanel(.setUp(turnOn: true))
                 return
             }
         }
         session.toggle()
-        showHUD()
+        showFeedback()
     }
 
-    private func showHUD() {
-        guard let button = statusItem.button else { return }
+    private func showFeedback() {
+        let feedback: Feedback
         if session.isOn {
-            hud.show(
-                from: button, on: true, title: "Awake",
-                detail: session.lidLockActive ? "Safe to close the lid." : "Keep the lid open."
-            )
+            if session.lidLockActive {
+                feedback = Feedback(on: true, title: "On. Close the lid any time.", detail: batteryLine())
+            } else {
+                feedback = Feedback(on: true, title: "On. Keep the lid open.", detail: "closed-lid mode is not allowed")
+            }
         } else if let note = session.note {
-            hud.show(from: button, on: false, title: "Not started", detail: note.replacingOccurrences(of: "Not started: ", with: ""))
+            feedback = Feedback(on: false, title: note, detail: nil)
         } else {
-            hud.show(from: button, on: false, title: "Off", detail: "Your Mac sleeps normally.")
+            feedback = Feedback(on: false, title: "Off. Your Mac sleeps normally.", detail: nil)
         }
+        showPanel(.feedback(feedback))
+    }
+
+    private func batteryLine() -> String {
+        let power = PowerInfo.snapshot()
+        if power.onBattery, let percent = power.batteryPercent {
+            return "stops at \(session.cutoff)% · \(percent)% now"
+        }
+        return "on power · stops if hot"
     }
 
     // MARK: Menu
@@ -148,7 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(cutoffItem)
         menu.addItem(.separator())
 
-        let howItem = NSMenuItem(title: "How it works", action: #selector(showHowItWorks), keyEquivalent: "")
+        let howItem = NSMenuItem(title: "How it works…", action: #selector(showHowItWorks), keyEquivalent: "")
         howItem.target = self
         menu.addItem(howItem)
 
@@ -176,8 +189,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshUI() {
-        statusLine.title = statusText()
-        toggleItem.state = session.isOn ? .on : .off
+        statusLine.attributedTitle = NSAttributedString(string: statusText(), attributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: 11.5, weight: .regular),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ])
+        toggleItem.title = session.isOn ? "Turn off" : "Turn on"
         for item in cutoffMenu.items {
             item.state = item.tag == session.cutoff ? .on : .off
         }
@@ -187,12 +203,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func statusText() -> String {
-        if session.isOn {
-            return session.lidLockActive
-                ? "Awake. Safe to close the lid."
-                : "Awake, lid open only."
+        guard session.isOn else { return session.note ?? "off · sleeps normally" }
+        var parts = ["on " + elapsed()]
+        if !session.lidLockActive {
+            parts.append("lid open only")
         }
-        return session.note ?? "Off. Your Mac sleeps normally."
+        let power = PowerInfo.snapshot()
+        if power.onBattery, let percent = power.batteryPercent {
+            parts.append("battery \(percent)%")
+        } else {
+            parts.append("on power")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func elapsed() -> String {
+        let minutes = Int(Date().timeIntervalSince(session.startedAt ?? Date()) / 60)
+        return String(format: "%d:%02d", minutes / 60, minutes % 60)
     }
 
     private func updateIcon() {
@@ -229,7 +256,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showHowItWorks() {
-        showGuide(.info)
+        session.refreshHelper()
+        showPanel(session.helperInstalled ? .info : .setUp(turnOn: false))
     }
 
     /// Runs setup and applies it to a running session. The caller shows the outcome.
@@ -252,15 +280,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func setUpClosedLid() {
-        switch performSetup() {
-        case .done:
-            syncGuide()
-            guide.showSuccess(.setUp)
-        case .cancelled:
-            break
-        case let .failed(message):
-            showAlert(title: "Closed-lid setup did not finish", message: message)
-        }
+        showPanel(.setUp(turnOn: false))
     }
 
     @objc private func removeClosedLid() {

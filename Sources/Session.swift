@@ -45,6 +45,7 @@ final class Session: NSObject {
     private(set) var helperInstalled = false
     /// Shown in the status line while off, e.g. why an automatic stop happened.
     private(set) var note: String?
+    private(set) var startedAt: Date?
 
     var onChange: (() -> Void)?
 
@@ -133,6 +134,7 @@ final class Session: NSObject {
             reason: "LidAwake session"
         )
         isOn = true
+        startedAt = Date()
         note = nil
         Log.write("switched on: idle-sleep assertion created (id \(id))")
 
@@ -160,6 +162,7 @@ final class Session: NSObject {
             self.activity = nil
         }
         isOn = false
+        startedAt = nil
         Log.write("switched off (\(reason)): assertion released")
         onChange?()
     }

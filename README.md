@@ -2,7 +2,7 @@
 
 A menu bar switch that keeps a MacBook running with the lid closed, so CLI agents such as Claude Code, Droid and Codex keep working. It turns itself off and sleeps the Mac at a battery cutoff or when the Mac gets too hot.
 
-Version 0.2.0. macOS 14 or later. Apple silicon and Intel. No network calls.
+Version 0.3.0. macOS 14 or later. Apple silicon and Intel. No network calls.
 
 ## Build
 
@@ -11,27 +11,30 @@ Version 0.2.0. macOS 14 or later. Apple silicon and Intel. No network calls.
 sh scripts/selftest.sh      # checks the scripts, no root, no system changes
 build/LidAwake.app/Contents/MacOS/LidAwake --selftest
 
-# Render a window state to PNG without touching sleep settings
-build/LidAwake.app/Contents/MacOS/LidAwake --preview-guide setUp --snapshot /tmp/setup.png
-#   states: setUp, turnOn, waiting, success, successOn, info (add --helper-ready)
-build/LidAwake.app/Contents/MacOS/LidAwake --preview-hud on --snapshot /tmp/hud.png
+# Render a panel screen to PNG without touching sleep settings
+build/LidAwake.app/Contents/MacOS/LidAwake --preview-panel setUp /tmp/setup.png [--dark]
+#   screens: setUp, turnOn, waiting, failed, ready, info, on, off
+
+# Regenerate the app icon after changing Sources/AppIcon.swift
+build/LidAwake.app/Contents/MacOS/LidAwake --render-iconset /tmp/AppIcon.iconset
+iconutil -c icns /tmp/AppIcon.iconset -o Resources/AppIcon.icns
 ```
 
 ## Install
 
 1. Copy `build/LidAwake.app` to `/Applications`. Setup runs the bundled scripts as root, so keep the app somewhere only an admin can change.
-2. Open it. A cup icon appears in the menu bar, and a welcome window opens the first time.
-3. Click **Allow closed-lid mode** and enter your Mac password once. The window confirms and closes by itself.
+2. Open it. A cup icon appears in the menu bar, and the first time a panel drops down from it.
+3. Click **Allow once** and enter your Mac password once. The panel says "Ready. This icon is your switch." Click **Turn on now**, or **Later**.
 
-Setup adds `/etc/sudoers.d/lidawake`, which lets your user run only `pmset -a disablesleep 0` and `pmset -a disablesleep 1` without a password. It also adds a watchdog LaunchAgent at `~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist`.
+Setup adds `/etc/sudoers.d/lidawake`, which lets your user run only `pmset -a disablesleep 0` and `pmset -a disablesleep 1` without a password. It also adds a watchdog LaunchAgent at `~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist`, which runs `~/Library/Application Support/LidAwake/LidAwake Watchdog`. macOS shows a one-time "Background Items Added" alert for it, and lists it in System Settings → General → Login Items.
 
 ## Use
 
-Click the cup. It starts steaming, and a small bubble says "Awake. Safe to close the lid." Close the lid. Click the cup again to turn it off.
+Click the cup. It starts steaming, and a small panel under it says "On. Close the lid any time." Close the lid. Click the cup again to turn it off.
 
-Right-click the cup, or Control-click it, for settings: battery cutoff, How it works, the log, removing the permission, and Quit.
+Right-click the cup, or Control-click it, for settings. The top line shows how long it has been on and the battery level. Below it: Turn on or off, battery cutoff, How it works, the log, removing the permission, and Quit.
 
-If closed-lid mode is not set up yet, clicking the cup opens the welcome window with **Allow and turn on**, which sets it up and turns it on in one step.
+If closed-lid mode is not set up yet, clicking the cup opens the setup panel with **Allow and turn on**, which sets it up and turns it on in one step.
 
 It switches off and sleeps the Mac when:
 
