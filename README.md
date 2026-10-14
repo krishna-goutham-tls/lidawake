@@ -32,9 +32,11 @@ git clone https://github.com/krishna-goutham-tls/lidawake.git ~/lidawake
 ~/lidawake/scripts/install.sh
 ```
 
-The script builds the app on your Mac with Apple's Command Line Tools (`xcode-select --install` if you do not have them) and copies it to `/Applications`. It needs no sudo. An app you build yourself opens without a Gatekeeper warning.
+The script downloads the latest release from GitHub and copies the app to `/Applications`. It needs no sudo and no developer tools. GitHub's download count is the only install count this project keeps. The app itself never goes online.
 
-There is also a zip on the [Releases](https://github.com/krishna-goutham-tls/lidawake/releases) page. It is not notarized yet, so macOS blocks the first open. Open it once, then go to System Settings → Privacy & Security and click **Open Anyway**.
+To build it on your Mac instead, run `~/lidawake/scripts/install.sh --from-source`. That needs Apple's Command Line Tools (`xcode-select --install`).
+
+You can also download the zip from the [Releases](https://github.com/krishna-goutham-tls/lidawake/releases) page in a browser. It is not notarized yet, so macOS blocks the first open. Open it once, then go to System Settings → Privacy & Security and click **Open Anyway**.
 
 ## Use
 
@@ -123,6 +125,8 @@ iconutil -c icns /tmp/AppIcon.iconset -o Resources/AppIcon.icns
 ```
 
 Plain `swiftc`, AppKit, no Xcode project and no dependencies.
+
+To release, build, then zip with `ditto -c -k --keepParent build/LidAwake.app LidAwake.zip` and attach it to a new GitHub release as `LidAwake.zip`. `install.sh` always fetches the latest release by that name.
 
 | # | Do this | Pass when |
 |---|---|---|

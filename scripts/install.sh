@@ -1,17 +1,40 @@
 #!/bin/bash
-# Builds LidAwake from this checkout and installs it in /Applications. Needs no sudo.
-# The password prompt comes later, from the app, when you click "Allow once".
+# Installs LidAwake in /Applications. Needs no sudo.
+#
+#   scripts/install.sh                 downloads the latest release zip from GitHub
+#   scripts/install.sh --from-source   builds this checkout with Apple's Command Line Tools
+#
+# GitHub counts each release download, which is the only install count this project has.
+# The app itself never goes online. The password prompt comes later, from the app.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if ! xcrun --find swiftc >/dev/null 2>&1; then
-    echo "LidAwake needs Apple's Command Line Tools to build. Run: xcode-select --install" >&2
-    echo "Then run this script again." >&2
-    exit 1
-fi
+URL="https://github.com/krishna-goutham-tls/lidawake/releases/latest/download/LidAwake.zip"
 
-./build.sh
+if [ "${1:-}" = "--from-source" ]; then
+    if ! xcrun --find swiftc >/dev/null 2>&1; then
+        echo "Building needs Apple's Command Line Tools. Run: xcode-select --install" >&2
+        echo "Then run this script again." >&2
+        exit 1
+    fi
+    ./build.sh
+    APP="build/LidAwake.app"
+else
+    TMP=$(mktemp -d)
+    trap 'rm -rf "$TMP"' EXIT
+    echo "==> downloading the latest LidAwake release"
+    if ! curl -fsSL "$URL" -o "$TMP/LidAwake.zip"; then
+        echo "The download failed. To build it on this Mac instead, run: $0 --from-source" >&2
+        exit 1
+    fi
+    ditto -x -k "$TMP/LidAwake.zip" "$TMP"
+    APP="$TMP/LidAwake.app"
+    if [ ! -d "$APP" ]; then
+        echo "The release zip has no LidAwake.app inside. Try: $0 --from-source" >&2
+        exit 1
+    fi
+fi
 
 if pgrep -x LidAwake >/dev/null; then
     # Quitting turns closed-lid mode off and restores normal sleep.
@@ -20,7 +43,7 @@ if pgrep -x LidAwake >/dev/null; then
 fi
 
 rm -rf /Applications/LidAwake.app
-ditto build/LidAwake.app /Applications/LidAwake.app
+ditto "$APP" /Applications/LidAwake.app
 open /Applications/LidAwake.app
 
 echo
