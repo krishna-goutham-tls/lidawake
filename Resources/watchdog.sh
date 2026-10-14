@@ -11,6 +11,7 @@ export PATH
 #                           Requires LIDAWAKE_HOME.
 # LIDAWAKE_HOME             replaces $HOME.
 # LIDAWAKE_PROCESS_NAME     process to look for instead of LidAwake.
+# LIDAWAKE_IOREG_FIXTURE    file read instead of `ioreg` output for the lid check.
 DRY_RUN=${LIDAWAKE_DRY_RUN:-0}
 if [ "$DRY_RUN" = 1 ]; then
     [ -n "${LIDAWAKE_HOME:-}" ] || { echo "LidAwake watchdog: dry run needs LIDAWAKE_HOME" >&2; exit 1; }
@@ -57,4 +58,24 @@ if [ "$ok" = 1 ]; then
 else
     log "app not running, could not restore normal sleep: $(printf '%s' "${err:-unknown error}" | tr '\n' ' ')"
     exit 1
+fi
+
+# With the lid already shut, macOS stays awake after disablesleep 0 until the lid
+# opens. Sleep it the way the lid close would have, unless an external display
+# keeps it in clamshell mode (then AppleClamshellCausesSleep is No).
+if [ -n "${LIDAWAKE_IOREG_FIXTURE:-}" ]; then
+    root=$(cat "$LIDAWAKE_IOREG_FIXTURE")
+else
+    root=$(ioreg -r -n IOPMrootDomain -d 1 2>/dev/null) || root=
+fi
+if printf '%s\n' "$root" | grep -q '"AppleClamshellState" = Yes' &&
+    printf '%s\n' "$root" | grep -q '"AppleClamshellCausesSleep" = Yes'; then
+    if [ "$DRY_RUN" = 1 ]; then
+        printf 'DRY RUN: /usr/bin/pmset sleepnow\n'
+        log "lid is closed, put the Mac to sleep"
+    elif err=$(/usr/bin/pmset sleepnow 2>&1); then
+        log "lid is closed, put the Mac to sleep"
+    else
+        log "lid is closed, could not put the Mac to sleep: $(printf '%s' "${err:-unknown error}" | tr '\n' ' ')"
+    fi
 fi

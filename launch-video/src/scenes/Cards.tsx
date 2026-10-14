@@ -143,7 +143,7 @@ export function Guardrails() {
   return (
     <AbsoluteFill style={{ background: color.paper }}>
       <Guard icon="battery-ink.png" line="Stops at 20% battery." sub="then sleeps your Mac. pick 10, 20, 30 or 50" at={0} dur={60} />
-      <Guard icon="thermo-ink.png" line="Stops if it runs hot." sub="then sleeps your Mac" at={60} dur={60} />
+      <Guard icon="thermo-ink.png" line="Stops on a heat warning." sub="when macOS reports serious heat. then sleeps your Mac" at={60} dur={60} />
       <Guard icon="moon-ink.png" line="Off means normal sleep." sub="quit it, and normal sleep is back too" at={120} dur={60} />
     </AbsoluteFill>
   );

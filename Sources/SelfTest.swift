@@ -20,6 +20,7 @@ enum SelfTest {
             print("thermal override: \(PowerInfo.thermalName(forced))")
         }
         print("lid: \(PowerInfo.lidName(PowerInfo.lidClosed()))")
+        print("lid close sleeps the Mac: \(PowerInfo.clamshellCausesSleep().map { $0 ? "yes" : "no" } ?? "unknown")")
         print("helper installed: \(Pmset.helperInstalled() ? "yes" : "no")")
         print("SleepDisabled: \(sleepDisabled)")
         print("marker: \(Paths.markerExists ? "present" : "absent") (\(Paths.marker.path))")

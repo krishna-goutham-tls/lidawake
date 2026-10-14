@@ -123,12 +123,36 @@ rm -f "$MARKER"
 out=$(dry LIDAWAKE_PROCESS_NAME=$NOAPP sh "$RES/watchdog.sh" 2>&1); rc=$?
 if [ $rc -eq 0 ] && [ -z "$out" ]; then pass "watchdog: no marker prints nothing"; else fail "watchdog: no marker prints nothing" "rc=$rc out=$out"; fi
 
+LID_OPEN="$TMP/ioreg-open"
+LID_SHUT="$TMP/ioreg-shut"
+LID_SHUT_DISPLAY="$TMP/ioreg-shut-display"
+printf '  "AppleClamshellCausesSleep" = Yes\n  "AppleClamshellState" = No\n' >"$LID_OPEN"
+printf '  "AppleClamshellCausesSleep" = Yes\n  "AppleClamshellState" = Yes\n' >"$LID_SHUT"
+printf '  "AppleClamshellCausesSleep" = No\n  "AppleClamshellState" = Yes\n' >"$LID_SHUT_DISPLAY"
+RESTORE="DRY RUN: /usr/bin/sudo -n /usr/bin/pmset -a disablesleep 0"
+
 : >"$MARKER"
-out=$(dry LIDAWAKE_PROCESS_NAME=$NOAPP sh "$RES/watchdog.sh" 2>&1); rc=$?
-if [ $rc -eq 0 ] && [ "$out" = "DRY RUN: /usr/bin/sudo -n /usr/bin/pmset -a disablesleep 0" ] && [ ! -e "$MARKER" ]; then
+out=$(dry LIDAWAKE_PROCESS_NAME=$NOAPP LIDAWAKE_IOREG_FIXTURE="$LID_OPEN" sh "$RES/watchdog.sh" 2>&1); rc=$?
+if [ $rc -eq 0 ] && [ "$out" = "$RESTORE" ] && [ ! -e "$MARKER" ]; then
     pass "watchdog: marker present, app not running restores sleep and clears marker"
 else
     fail "watchdog: marker present, app not running restores sleep and clears marker" "rc=$rc out=$out"
+fi
+
+: >"$MARKER"
+out=$(dry LIDAWAKE_PROCESS_NAME=$NOAPP LIDAWAKE_IOREG_FIXTURE="$LID_SHUT" sh "$RES/watchdog.sh" 2>&1); rc=$?
+if [ $rc -eq 0 ] && [ "$out" = "$(printf '%s\nDRY RUN: /usr/bin/pmset sleepnow' "$RESTORE")" ]; then
+    pass "watchdog: lid shut, restores sleep and then sleeps the Mac"
+else
+    fail "watchdog: lid shut, restores sleep and then sleeps the Mac" "rc=$rc out=$out"
+fi
+
+: >"$MARKER"
+out=$(dry LIDAWAKE_PROCESS_NAME=$NOAPP LIDAWAKE_IOREG_FIXTURE="$LID_SHUT_DISPLAY" sh "$RES/watchdog.sh" 2>&1); rc=$?
+if [ $rc -eq 0 ] && [ "$out" = "$RESTORE" ]; then
+    pass "watchdog: lid shut on an external display, restores sleep and leaves the Mac awake"
+else
+    fail "watchdog: lid shut on an external display, restores sleep and leaves the Mac awake" "rc=$rc out=$out"
 fi
 out=$(dry LIDAWAKE_PROCESS_NAME=$NOAPP sh "$RES/watchdog.sh" 2>&1)
 check "watchdog: second run after reset prints nothing" [ -z "$out" ]

@@ -1,8 +1,8 @@
 # LidAwake
 
-A menu bar switch that keeps a MacBook running with the lid closed, so CLI agents such as Claude Code, Droid and Codex keep working. It turns itself off and sleeps the Mac at a battery cutoff or when the Mac gets too hot.
+A menu bar switch that keeps a MacBook running with the lid closed, so CLI agents such as Claude Code, Droid and Codex keep working. It turns itself off and sleeps the Mac at a battery cutoff or when macOS reports serious heat. When you open the lid, it tells you whether the Mac stayed awake.
 
-Version 0.3.0. macOS 14 or later. Apple silicon and Intel. No network calls.
+Version 0.4.0. macOS 14 or later. Apple silicon and Intel. No network calls.
 
 ## Build
 
@@ -59,6 +59,8 @@ Every minute while the switch is on, the app writes a line to `~/Library/Logs/Li
 
 Lines with `lid=closed` one minute apart prove the Mac stayed awake with the lid shut. **Open log** in the menu opens the file.
 
+While the switch is on, the app checks every 30 s. When the lid opens after 5 min or more, a panel reports how long the Mac stayed awake and the battery used. A gap of more than 90 s between checks means the Mac may have slept, and the panel says so. The same result stays in the menu as `last lid close`, and the log has a `lid record` line.
+
 ## MVP test, on your Mac
 
 | # | Do this | Pass when |
@@ -67,12 +69,15 @@ Lines with `lid=closed` one minute apart prove the Mac stayed awake with the lid
 | 2 | Start a long agent task. Switch on. Unplug. Close the lid for 30 min on a desk | The log has `lid=closed` heartbeats about every minute, and the agent kept working |
 | 3 | Switch off. Close the lid for 2 min | No heartbeats. `pmset -g \| grep SleepDisabled` prints nothing or `0` |
 | 4 | On battery, set **Stop at battery** above the current level, switch on | Within 30 s the switch turns off and the Mac sleeps. The log says why |
-| 5 | `defaults write space.thelaunch.lidawake debugForceThermal -string serious`, then switch on | The switch refuses to start, saying the Mac is too hot. Switch on first, then run the command, and within 30 s it stops and sleeps. Clear it with `defaults delete space.thelaunch.lidawake debugForceThermal` |
+| 5 | `defaults write space.thelaunch.lidawake debugForceThermal -string serious`, then switch on | The switch refuses to start, saying macOS reports serious heat. Switch on first, then run the command, and within 30 s it stops and sleeps. Clear it with `defaults delete space.thelaunch.lidawake debugForceThermal` |
 | 6 | Switch on, then `pkill -9 -x LidAwake` | Within about 60 s the log shows `[watchdog] app not running, restored normal sleep` |
+| 6b | Switch on, run `sleep 20; pkill -9 -x LidAwake` in Terminal, close the lid within 20 s, wait 3 min, open it | The log shows `[watchdog] lid is closed, put the Mac to sleep`, and `pmset -g log \| grep -i sleep` shows a sleep a minute or so after the kill |
 | 7 | Switch on, then restart the Mac | After login, `pmset -g \| grep SleepDisabled` prints nothing or `0` |
 | 8 | Switch on, then **Quit LidAwake** | `SleepDisabled` is back to `0` |
 | 9 | **Remove closed-lid permission** | `/etc/sudoers.d/lidawake` and the LaunchAgent are gone |
-| 10 | Leave it off for 10 min | Activity Monitor shows 0% CPU |
+| 10 | Leave it off for 10 min, then on for 10 min with the panel closed | Activity Monitor shows 0% CPU both times |
+| 11 | Switch on, close the lid for 10 min, open it and unlock | A panel says "Your Mac stayed awake 10 min with the lid closed." The menu shows a `last lid close` line |
+| 12 | Switch on, then in Terminal run `sudo pmset -a disablesleep 0` | Within 30 s the log says closed-lid mode was turned on again, and `SleepDisabled` is `1` |
 
 ## Uninstall
 

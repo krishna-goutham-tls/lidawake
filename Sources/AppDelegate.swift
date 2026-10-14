@@ -6,6 +6,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private let menu = NSMenu()
     private let statusLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let reportLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    /// A lid report waits here until the lid is open and the screen is unlocked.
+    private var pendingReport: LidReport?
     private let toggleItem = NSMenuItem(title: "Turn on", action: nil, keyEquivalent: "")
     private let cutoffItem = NSMenuItem(title: "Stop at battery", action: nil, keyEquivalent: "")
     private let cutoffMenu = NSMenu()
@@ -26,6 +29,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         session.recoverOnLaunch()
         HelperSetup.upgradeWatchdogIfNeeded()
         session.onChange = { [weak self] in self?.refreshUI() }
+        session.onReport = { [weak self] report in
+            self?.pendingReport = report
+            self?.refreshUI()
+            self?.presentReportWhenVisible()
+        }
+        let workspace = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.screensDidSleepNotification, NSWorkspace.screensDidWakeNotification, NSWorkspace.didWakeNotification] {
+            workspace.addObserver(self, selector: #selector(displaysChanged(_:)), name: name, object: nil)
+        }
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(displaysChanged(_:)), name: Notification.Name("com.apple.screenIsUnlocked"), object: nil
+        )
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         buildMenu()
@@ -62,7 +77,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func willPowerOff(_ notification: Notification) {
-        session.shutdown(reason: "logout, restart or shutdown")
+        session.shutdown(reason: "logout, restart or shutdown", allowSleep: false)
+    }
+
+    @objc private func displaysChanged(_ notification: Notification) {
+        session.checkLid()
+        // The status item has no place on screen for a moment after the displays wake.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.presentReportWhenVisible()
+        }
+    }
+
+    private func presentReportWhenVisible() {
+        guard let report = pendingReport, PowerInfo.lidClosed() != true, !Self.screenLocked() else { return }
+        pendingReport = nil
+        showPanel(.feedback(Feedback(on: session.isOn, title: report.title, detail: report.detail, hold: 20)))
+    }
+
+    private static func screenLocked() -> Bool {
+        let info = CGSessionCopyCurrentDictionary() as? [String: Any]
+        return info?["CGSSessionScreenIsLocked"] as? Bool ?? false
     }
 
     private func installSignalHandlers() {
@@ -133,7 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if power.onBattery, let percent = power.batteryPercent {
             return "stops at \(session.cutoff)% · \(percent)% now"
         }
-        return "on power · stops if hot"
+        return "on power · stops on a heat warning"
     }
 
     // MARK: Menu
@@ -144,6 +178,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         statusLine.isEnabled = false
         menu.addItem(statusLine)
+        reportLine.isEnabled = false
+        menu.addItem(reportLine)
         menu.addItem(.separator())
 
         toggleItem.target = self
@@ -193,6 +229,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .font: NSFont.monospacedSystemFont(ofSize: 11.5, weight: .regular),
             .foregroundColor: NSColor.secondaryLabelColor,
         ])
+        if let report = session.lastReport {
+            reportLine.attributedTitle = NSAttributedString(string: report.menuLine, attributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 11.5, weight: .regular),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ])
+            reportLine.isHidden = false
+        } else {
+            reportLine.isHidden = true
+        }
         toggleItem.title = session.isOn ? "Turn off" : "Turn on"
         for item in cutoffMenu.items {
             item.state = item.tag == session.cutoff ? .on : .off

@@ -22,6 +22,17 @@ if let index = arguments.firstIndex(of: "--preview-panel") {
     case "info": screen = .info
     case "on": screen = .feedback(Feedback(on: true, title: "On. Close the lid any time.", detail: "stops at 20% · 81% now"))
     case "off": screen = .feedback(Feedback(on: false, title: "Off. Your Mac sleeps normally.", detail: nil))
+    case "report", "report-slept", "report-stopped":
+        let closed = ISO8601DateFormatter().date(from: "2026-10-13T17:24:00Z")!
+        let report = LidReport(
+            closedAt: closed, endedAt: closed.addingTimeInterval(name == "report-stopped" ? 5 * 3600 + 18 * 60 : 8 * 3600 + 31 * 60),
+            batteryStart: 80, batteryEnd: name == "report-stopped" ? 20 : 68,
+            longestGap: name == "report-slept" ? 41 * 60 : 31,
+            stop: name == "report-stopped" ? .lowBattery(percent: 20, cutoff: 20) : nil
+        )
+        screen = .feedback(Feedback(on: name == "report", title: report.title, detail: report.detail, hold: 20))
+        print(report.menuLine)
+        print(report.logText)
     default: screen = .setUp(turnOn: false)
     }
     MainActor.assumeIsolated {

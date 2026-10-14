@@ -16,21 +16,84 @@ enum SafetyStop {
     }
 
     func stoppedText(at date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "HH:mm"
-        let time = formatter.string(from: date)
+        let time = clockTime(date)
         switch self {
         case let .lowBattery(percent, _): return "Stopped at \(percent)% battery, \(time)"
-        case .hot: return "Stopped, Mac too hot, \(time)"
+        case .hot: return "Stopped on a heat warning, \(time)"
         }
     }
 
     var notStartedText: String {
         switch self {
         case let .lowBattery(percent, cutoff): return "Not started: battery \(percent)%, cutoff \(cutoff)%."
-        case .hot: return "Not started: Mac too hot."
+        case .hot: return "Not started: macOS reports serious heat."
         }
+    }
+}
+
+func clockTime(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "HH:mm"
+    return formatter.string(from: date)
+}
+
+func spanText(_ seconds: TimeInterval) -> String {
+    let minutes = max(0, Int(seconds / 60))
+    return minutes < 60 ? "\(minutes) min" : "\(minutes / 60)h \(minutes % 60)m"
+}
+
+/// What happened while the lid was closed, built from the app's own 30 s checks. If the Mac
+/// slept, the checks stop, so a long gap between two of them is the evidence.
+struct LidReport {
+    static let gapLimit: TimeInterval = 90
+
+    let closedAt: Date
+    let endedAt: Date
+    let batteryStart: Int?
+    let batteryEnd: Int?
+    let longestGap: TimeInterval
+    let stop: SafetyStop?
+
+    var duration: TimeInterval { endedAt.timeIntervalSince(closedAt) }
+    var mayHaveSlept: Bool { longestGap > Self.gapLimit }
+
+    var title: String {
+        if mayHaveSlept { return "Your Mac may have slept with the lid closed." }
+        switch stop {
+        case let .lowBattery(percent, _)?:
+            return "Stopped at \(percent)% battery at \(clockTime(endedAt)) and put your Mac to sleep."
+        case .hot?:
+            return "Stopped on a heat warning at \(clockTime(endedAt)) and put your Mac to sleep."
+        case nil:
+            return "Your Mac stayed awake \(spanText(duration)) with the lid closed."
+        }
+    }
+
+    var detail: String {
+        if mayHaveSlept { return "no check-in for \(spanText(longestGap)) · see the log" }
+        if stop != nil { return "awake \(spanText(duration)) with the lid closed before that" }
+        var parts = ["\(clockTime(closedAt)) to \(clockTime(endedAt))"]
+        if let start = batteryStart, let end = batteryEnd { parts.append("battery \(start)% to \(end)%") }
+        return parts.joined(separator: " · ")
+    }
+
+    var menuLine: String {
+        let what: String
+        if mayHaveSlept {
+            what = "may have slept, see log"
+        } else if let stop {
+            what = stop.stoppedText(at: endedAt).lowercased()
+        } else {
+            what = "awake \(spanText(duration)), \(clockTime(closedAt)) to \(clockTime(endedAt))"
+        }
+        return "last lid close: \(what)"
+    }
+
+    var logText: String {
+        let battery = "\(batteryStart.map { "\($0)%" } ?? "none") to \(batteryEnd.map { "\($0)%" } ?? "none")"
+        return "lid closed \(spanText(duration)), longest gap between checks \(Int(longestGap)) s, battery \(battery)"
+            + (stop.map { ", ended by automatic stop: \($0.logText)" } ?? "")
     }
 }
 
@@ -46,8 +109,20 @@ final class Session: NSObject {
     /// Shown in the status line while off, e.g. why an automatic stop happened.
     private(set) var note: String?
     private(set) var startedAt: Date?
+    private(set) var lastReport: LidReport?
 
     var onChange: (() -> Void)?
+    var onReport: ((LidReport) -> Void)?
+
+    /// Shorter closes are not worth a panel; they are still logged.
+    static let minReportDuration: TimeInterval = 5 * 60
+    private struct LidWatch {
+        let closedAt: Date
+        let batteryStart: Int?
+        var lastCheck: Date
+        var longestGap: TimeInterval
+    }
+    private var lidWatch: LidWatch?
 
     private var assertionID: IOPMAssertionID = 0
     private var activity: NSObjectProtocol?
@@ -149,8 +224,9 @@ final class Session: NSObject {
         onChange?()
     }
 
-    func switchOff(reason: String) {
+    func switchOff(reason: String, sleepIfLidShut: Bool = true) {
         guard isOn else { return }
+        finishLidWatch(at: Date(), stop: nil)
         stopMonitoring()
         releaseLidLock(force: false)
         if assertionID != 0 {
@@ -164,20 +240,67 @@ final class Session: NSObject {
         isOn = false
         startedAt = nil
         Log.write("switched off (\(reason)): assertion released")
+        if sleepIfLidShut { sleepIfLidIsShut(after: reason) }
         onChange?()
     }
 
     /// Safe to call more than once. Used by quit, signals and power off.
-    func shutdown(reason: String) {
+    /// `allowSleep` is false while macOS is logging out or shutting down.
+    func shutdown(reason: String, allowSleep: Bool = true) {
         guard !didShutdown else { return }
         didShutdown = true
         Log.write("shutting down (\(reason))")
         if isOn {
-            switchOff(reason: reason)
+            switchOff(reason: reason, sleepIfLidShut: allowSleep)
         } else if Paths.markerExists {
             releaseLidLock(force: true)
         }
         Log.write("shutdown complete")
+    }
+
+    /// With the lid already shut, macOS keeps running after `disablesleep 0` until the lid opens again.
+    /// Sleep the Mac the way the lid close would have. An external display keeps a closed Mac in
+    /// clamshell mode, and then AppleClamshellCausesSleep is false, so it is left awake.
+    private func sleepIfLidIsShut(after reason: String) {
+        guard PowerInfo.lidClosed() == true, PowerInfo.clamshellCausesSleep() == true else { return }
+        Log.write("lid is closed after \(reason): putting Mac to sleep: pmset sleepnow")
+        let result = Pmset.sleepNow()
+        if !result.ok {
+            Log.write("error: pmset sleepnow failed (\(result.summary))")
+        }
+    }
+
+    // MARK: Lid record
+
+    /// Called on every safety check and when the displays sleep or wake.
+    func checkLid() {
+        guard isOn else { return }
+        let now = Date()
+        let closed = PowerInfo.lidClosed() == true
+        if var watch = lidWatch {
+            watch.longestGap = max(watch.longestGap, now.timeIntervalSince(watch.lastCheck))
+            watch.lastCheck = now
+            lidWatch = watch
+            if !closed { finishLidWatch(at: now, stop: nil) }
+        } else if closed && lidLockActive {
+            lidWatch = LidWatch(closedAt: now, batteryStart: PowerInfo.snapshot().batteryPercent, lastCheck: now, longestGap: 0)
+            Log.write("lid closed while on")
+        }
+    }
+
+    private func finishLidWatch(at date: Date, stop: SafetyStop?) {
+        guard let watch = lidWatch else { return }
+        lidWatch = nil
+        let gap = max(watch.longestGap, date.timeIntervalSince(watch.lastCheck))
+        let report = LidReport(
+            closedAt: watch.closedAt, endedAt: date,
+            batteryStart: watch.batteryStart, batteryEnd: PowerInfo.snapshot().batteryPercent,
+            longestGap: gap, stop: stop
+        )
+        Log.write("lid record: \(report.logText)")
+        guard report.duration >= Self.minReportDuration else { return }
+        lastReport = report
+        onReport?(report)
     }
 
     // MARK: Lid lock (pmset disablesleep)
@@ -298,9 +421,13 @@ final class Session: NSObject {
     }
 
     func safetyCheck(trigger: String) {
-        guard isOn, let stop = safetyViolation() else { return }
+        guard isOn else { return }
+        checkLid()
+        if trigger == "timer" { confirmLidLock() }
+        guard let stop = safetyViolation() else { return }
         Log.write("automatic stop (\(trigger)): \(stop.logText)")
-        switchOff(reason: "automatic stop")
+        if PowerInfo.lidClosed() == true { finishLidWatch(at: Date(), stop: stop) }
+        switchOff(reason: "automatic stop", sleepIfLidShut: false)
         note = stop.stoppedText(at: Date())
         onChange?()
         Log.write("putting Mac to sleep: pmset sleepnow")
@@ -308,6 +435,19 @@ final class Session: NSObject {
         if !result.ok {
             Log.write("error: pmset sleepnow failed (\(result.summary))")
         }
+    }
+
+    /// The cup must not say "safe to close the lid" when it is not. Another tool, or a reset,
+    /// can turn `disablesleep` back to 0 behind the app's back.
+    private func confirmLidLock() {
+        guard lidLockActive, Pmset.sleepDisabled() == false else { return }
+        Log.write("warning: SleepDisabled is 0 while closed-lid mode should be on; turning it on again")
+        lidLockActive = false
+        engageLidLock()
+        if !lidLockActive {
+            Log.write("closed-lid mode could not be restored: closing the lid will sleep the Mac")
+        }
+        onChange?()
     }
 
     private func heartbeat() {

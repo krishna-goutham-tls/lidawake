@@ -74,7 +74,7 @@ export function SetupPanel() {
           <PillButton primary>Allow once</PillButton>
         </div>
         <div style={{ height: 1, background: 'rgba(0,0,0,0.1)', marginTop: 16 }} />
-        <div style={{ fontFamily: font.mono, fontSize: 10.5, color: secondary, marginTop: 10 }}>stops at 20% battery · stops if hot</div>
+        <div style={{ fontFamily: font.mono, fontSize: 10.5, color: secondary, marginTop: 10 }}>stops at 20% battery or a heat warning</div>
       </div>
     </Popover>
   );

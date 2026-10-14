@@ -33,11 +33,21 @@ enum PowerInfo {
 
     /// nil on Macs without a lid or when the property is missing.
     static func lidClosed() -> Bool? {
+        rootDomainFlag("AppleClamshellState")
+    }
+
+    /// Whether closing the lid sleeps the Mac under the normal rules. False in clamshell mode with
+    /// an external display.
+    static func clamshellCausesSleep() -> Bool? {
+        rootDomainFlag("AppleClamshellCausesSleep")
+    }
+
+    private static func rootDomainFlag(_ key: String) -> Bool? {
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
         guard service != 0 else { return nil }
         defer { IOObjectRelease(service) }
         guard let value = IORegistryEntryCreateCFProperty(
-            service, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0
+            service, key as CFString, kCFAllocatorDefault, 0
         )?.takeRetainedValue() else { return nil }
         return value as? Bool
     }

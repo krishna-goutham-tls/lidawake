@@ -23,6 +23,8 @@ struct Feedback: Equatable {
     let on: Bool
     let title: String
     let detail: String?
+    /// Seconds before the panel closes itself. A lid report stays long enough to read.
+    var hold: Double = 1.8
 }
 
 @MainActor
@@ -37,7 +39,7 @@ final class PanelModel: ObservableObject {
     var switchOn: () -> Void = {}
     var close: () -> Void = {}
 
-    var safetyLine: String { "stops at \(cutoff)% battery · stops if hot" }
+    var safetyLine: String { "stops at \(cutoff)% battery or a heat warning" }
 
     func allow() {
         if case .waiting = screen { return }
@@ -107,7 +109,7 @@ final class PanelController: NSObject, NSPopoverDelegate {
 
         switch screen {
         case .ready: scheduleClose(after: 6)
-        case .feedback: scheduleClose(after: 1.8)
+        case let .feedback(feedback): scheduleClose(after: feedback.hold)
         default: break
         }
     }

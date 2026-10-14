@@ -46,10 +46,19 @@ enum HelperSetup {
 
     /// Versions before 0.3.0 ran the watchdog as watchdog.sh under /bin/sh, so macOS listed it as "sh".
     /// Reinstalling as the user moves it to the named file. No password needed.
+    /// A newer app also replaces an installed watchdog whose script differs from the bundled one.
     static func upgradeWatchdogIfNeeded() {
+        let files = FileManager.default
         let legacy = Paths.supportDir.appendingPathComponent("watchdog.sh").path
-        guard FileManager.default.fileExists(atPath: legacy) else { return }
-        Log.write("upgrading watchdog from watchdog.sh")
+        if files.fileExists(atPath: legacy) {
+            Log.write("upgrading watchdog from watchdog.sh")
+            _ = runAsUser(script: "install-watchdog.sh")
+            return
+        }
+        let installed = Paths.supportDir.appendingPathComponent("LidAwake Watchdog").path
+        guard files.fileExists(atPath: installed), let bundled = resourcePath("watchdog.sh"),
+              !files.contentsEqual(atPath: installed, andPath: bundled) else { return }
+        Log.write("upgrading watchdog to the version in this app")
         _ = runAsUser(script: "install-watchdog.sh")
     }
 

@@ -9,15 +9,18 @@ Ship criteria are in `../brainstorming/mvp-plan.md`. Tick each one after it pass
 - [ ] 3. Switch off, lid closed: the Mac sleeps as usual
 - [ ] 4. Battery cutoff stops the switch and sleeps the Mac
 - [ ] 5. Forced heat state stops the switch and sleeps the Mac
-- [ ] 6. `kill -9` while on: the watchdog restores sleep within about 60 s
+- [ ] 6. `kill -9` while on: the watchdog restores sleep within about 60 s. 0.4.0: with the lid shut it also sleeps the Mac (README test 6b)
 - [ ] 7. Restart while on: sleep is restored after login
 - [x] 8. Quit restores normal sleep (2026-10-14, SleepDisabled back to 0)
 - [ ] 9. Remove permission deletes the sudoers rule and the LaunchAgent
-- [ ] 10. No idle CPU, no network calls. 0.3.0 failed: about 10% CPU while on, from the cup animation still running in the closed panel. 0.3.1 stops it when the panel closes (0% in a repro). Re-measure on the installed 0.3.1 while on: `ps -o time= -p $(pgrep -x LidAwake)` twice, 10 s apart
+- [ ] 10. No idle CPU, no network calls. 0.3.0 failed: about 10% CPU while on, from the cup animation still running in the closed panel. 0.3.1 stops it when the panel closes (0% in a repro). Re-measure on the installed 0.4.0 while on: `ps -o time= -p $(pgrep -x LidAwake)` twice, 10 s apart
+- [ ] 11. Lid report (0.4.0): open the lid after 10 min closed while on, unlock, and a panel says how long it stayed awake (README test 11)
+- [ ] 12. Lid lock check (0.4.0): `sudo pmset -a disablesleep 0` while on is undone within 30 s (README test 12)
 
 ## Next, after the MVP passes
 
 - Pick the real name
 - Open at login
-- Auto-off when agents go quiet (differentiator candidate)
+- Heat stop from real temperature, not only macOS thermal state (Lidless #34: thermal state stayed nominal while a closed Mac got very hot). See `../brainstorming/user-pain-research.md`
+- Auto-off when agents go quiet (taken by LidRun, Adrafinil, Hold My Lid)
 - Developer ID signing and notarization before strangers install it
