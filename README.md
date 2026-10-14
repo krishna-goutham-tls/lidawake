@@ -162,7 +162,7 @@ Built with [Factory](https://factory.ai) Droid running Claude Opus 5.5, in one s
 
 ## Other apps that do this
 
-[WakeBee](https://wakebee.app) gave me the idea. [caffeinate-disablesleep](https://github.com/demiaochen/caffeinate-disablesleep) uses the same `pmset` method. [LidRun](https://lidrun.com) and [Clamshell](https://clamshell.dev) are paid, notarized and do more. [LidAwake-Mac](https://github.com/deezeddd/LidAwake-Mac) is a separate project with the same name.
+[WakeBee](https://wakebee.app) gave me the idea. [caffeinate-disablesleep](https://github.com/demiaochen/caffeinate-disablesleep) uses the same `pmset` method. [LidRun](https://lidrun.com) and [Clamshell](https://clamshell.dev) are paid, notarized and do more.
 
 ## Licence
 
