@@ -1,0 +1,17 @@
+# LidAwake launch video
+
+51 seconds, 1920x1080, 30 fps. Remotion with a three.js MacBook built in code. The score is synthesized, no samples.
+
+```sh
+npm install
+python3 tools/score.py                       # writes public/score.wav
+npx remotion render src/index.ts LaunchVideo out/lidawake-launch.mp4 --gl=angle --crf=16 --timeout=120000
+ffmpeg -i out/lidawake-launch.mp4 -c:v copy -af "loudnorm=I=-15:TP=-1.5:LRA=11,aresample=48000" \
+  -c:a aac -b:a 192k -movflags +faststart out/lidawake-launch-master.mp4   # raw mix peaks above 0 dBFS
+npx remotion studio src/index.ts             # preview and scrub
+```
+
+- Shot timing lives in `src/theme.ts` (`T`). `tools/score.py` copies those frame numbers, so change both together.
+- The night numbers come from the real log of 2026-10-13 (`src/night-log.ts`): 512 heartbeats, 22:54 to 07:25, all lid closed, on battery, heat nominal.
+- Icons are SF Symbols rendered by `tools/symbols.swift` (`swiftc -O tools/symbols.swift -o /tmp/s && /tmp/s public`).
+- The terminal is an illustration of an agent run. Every claim in the captions is true of LidAwake 0.3.0.

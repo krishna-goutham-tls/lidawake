@@ -1,0 +1,23 @@
+{
+  "name": "lidawake-launch-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render LaunchVideo out/lidawake-launch.mp4 --gl=angle",
+    "still": "remotion still LaunchVideo --gl=angle"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@remotion/cli": "^4.0.535",
+    "@remotion/three": "^4.0.535",
+    "@types/react": "^18.3.31",
+    "@types/three": "^0.186.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.535",
+    "three": "^0.186.1",
+    "typescript": "^7.0.2"
+  }
+}
