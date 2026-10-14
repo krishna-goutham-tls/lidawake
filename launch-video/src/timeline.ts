@@ -82,8 +82,8 @@ export function camera(f: number): Pose {
 /** 0 = day, 1 = night. */
 export function night(f: number) {
   if (f < T.closed2) return 0;
-  if (f < T.nightEnd - 50) return ramp(f, T.closed2, T.closed2 + 36);
-  return ramp(f, T.nightEnd - 50, T.nightEnd + 10, 1, 0);
+  if (f < T.nightEnd - 60) return ramp(f, T.closed2, T.closed2 + 50);
+  return ramp(f, T.nightEnd - 60, T.nightEnd + 10, 1, 0);
 }
 
 export function screenState(f: number): ScreenState {

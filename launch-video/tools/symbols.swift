@@ -33,6 +33,9 @@ let items: [(String, String, NSColor)] = [
     ("moon.zzz", "moon-ink", ink),
     ("wifi", "wifi-ink", ink),
     ("battery.75percent", "battery75-ink", ink),
+    ("apple.logo", "apple-ink", ink),
+    ("magnifyingglass", "search-ink", ink),
+    ("switch.2", "control-ink", ink),
 ]
 for (name, file, color) in items {
     render(name, "\(dir)/\(file).png", size: 128, color: color)

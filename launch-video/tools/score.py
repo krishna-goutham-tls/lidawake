@@ -98,9 +98,9 @@ def chord(buf, start, dur, notes, amp=0.05, attack=1.2, release=1.6, bright=1.0)
         add(buf, start, tone(midi(m), dur, amp * (1.2 if j == 0 else 1), attack, release, h, detune=0.0015), pan=(j / max(1, len(notes) - 1) - 0.5) * 0.8)
 
 
-# Opening: soft, expectant, until the lid shuts.
-chord(pad, 0.0, sec(T.close1) + 0.6, D9, 0.045, 0.6, 0.5)
-chord(pad, sec(T.close1) * 0.5, sec(T.close1) * 0.5 + 0.6, Bm9, 0.025, 0.6, 0.5)
+# Problem card: soft, expectant, until the lid shuts.
+chord(pad, 0.0, sec(T.close1) + 0.6, D9, 0.045, 1.0, 0.5)
+chord(pad, sec(T.problemB), sec(T.close1 - T.problemB) + 0.6, Bm9, 0.03, 0.8, 0.5)
 # Lid closes and the Mac sleeps: the music stops with it. Only room tone until the lid opens.
 # Lid opens: one rising note, then the build to the click.
 chord(pad, sec(T.reopen), sec(T.click - T.reopen), G69, 0.04, 1.4, 0.3, bright=0.7)
@@ -113,8 +113,8 @@ chord(pad, sec(T.closed2) + night * 0.45, night * 0.55, night2, 0.05, 1.4, 1.6, 
 # Morning: bright, a little higher.
 chord(pad, sec(T.open3) - 0.6, sec(T.stats - T.open3) + 1.4, [50, 62, 66, 69, 74, 76], 0.05, 1.0, 1.2, bright=1.3)
 # Proof and guardrails: confident movement.
-SWAP = T.password + 58  # the password card swaps to its second line here (Cards.tsx)
-prog = [(T.stats, Bm9), (T.stats + 50, G69), (T.guard, D9), (T.guard + 50, A6), (T.password, G69), (SWAP, Em9)]
+SWAP = T.swap
+prog = [(T.stats, Bm9), (T.stats + 60, G69), (T.guard, D9), (T.guard + 60, A6), (T.guard + 120, Bm9), (T.password, G69), (SWAP, Em9)]
 for k, (fr, ch) in enumerate(prog):
     nxt = prog[k + 1][0] if k + 1 < len(prog) else T.end
     chord(pad, sec(fr), sec(nxt - fr) + 0.5, ch, 0.045, 0.15, 0.5, bright=1.1)
@@ -122,8 +122,8 @@ for k, (fr, ch) in enumerate(prog):
 chord(pad, sec(T.end), DUR - sec(T.end), [38, 50, 57, 62, 66, 69, 74], 0.055, 0.08, 3.2, bright=1.0)
 
 # Sub bass under the sections that move.
-for fr, m, d in [(T.click, 38, sec(T.closed2 - T.click)), (T.stats, 35, 1.7), (T.stats + 50, 31, 1.7), (T.guard, 38, 1.7),
-                 (T.guard + 50, 33, 1.7), (T.password, 31, 1.9), (SWAP, 28, 1.9), (T.end, 26, sec(T.total - T.end))]:
+for fr, m, d in [(T.click, 38, sec(T.closed2 - T.click)), (T.stats, 35, 2.0), (T.stats + 60, 31, 2.0), (T.guard, 38, 2.0),
+                 (T.guard + 60, 33, 2.0), (T.guard + 120, 35, 2.0), (T.password, 31, 2.6), (SWAP, 28, 2.6), (T.end, 26, sec(T.total - T.end))]:
     add(pad, sec(fr), tone(midi(m + 12), d, 0.09, 0.02, 0.6, (1, 0.15)), 0)
 
 # ---- Sound effects. ----
@@ -177,7 +177,7 @@ add(fx, sec(T.click) + 0.09, chime(86, 0.035), 0.35)
 
 # Night: a soft tick each half-second while the real heartbeats scroll, and a chime on each new hour.
 night_start = sec(T.closed2 + 16)
-night_end = sec(T.nightEnd - 70)  # NightHud's clock runs from closed2 + 16 to nightEnd - 70
+night_end = sec(T.nightEnd - 92)  # NightHud's clock runs from closed2 + 16 to nightEnd - 92
 x = night_start
 k = 0
 while x < night_end:
@@ -208,7 +208,7 @@ for h in range(8):
     add(fx, when, chime(74 if h % 2 else 69, 0.05), 0)
 
 # Guardrail and card hits.
-for fr in [T.stats, T.guard, T.password, SWAP]:
+for fr in [T.stats, T.guard, T.guard + 60, T.guard + 120, T.password, SWAP]:
     add(fx, sec(fr), thud(0.18), 0)
     add(fx, sec(fr) - 0.4, swell(0.45, 0.035, 500, 7000), 0)
 add(fx, sec(T.end), chime(86, 0.05), 0)

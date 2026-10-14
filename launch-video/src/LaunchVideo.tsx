@@ -1,7 +1,7 @@
 import React from 'react';
 import { AbsoluteFill, Audio, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { easeInOut, prog } from './kit';
-import { Caption3D, EndCard, Guardrails, NightHud, Password, Stats } from './scenes/Cards';
+import { Caption3D, EndCard, Guardrails, NightHud, Password, Problem, Stats } from './scenes/Cards';
 import { FlatClick } from './scenes/FlatClick';
 import { Scene3D } from './three/Scene3D';
 import { night } from './timeline';
@@ -27,8 +27,8 @@ function Backdrop() {
       <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 42%, #FFFFFF 0%, ${color.paper} 55%, #EEF2F8 100%)` }} />
       <AbsoluteFill style={{ opacity: morning * (1 - n), background: `radial-gradient(ellipse at 70% 20%, #FFFDF8 0%, ${color.morning} 60%, #F3EEE6 100%)` }} />
       {/* Blue hour under the night on the way down, a sunrise under it on the way up, so no fade passes through grey. */}
-      <AbsoluteFill style={{ opacity: f < T.nightEnd - 100 ? Math.min(1, n * 3) : 0, background: 'linear-gradient(180deg, #3D5F9E 0%, #7FA0D6 100%)' }} />
-      <AbsoluteFill style={{ opacity: f >= T.nightEnd - 100 ? Math.min(1, n * 3) : 0, background: 'linear-gradient(180deg, #7B78B8 0%, #F0A889 45%, #FFE9D6 100%)' }} />
+      <AbsoluteFill style={{ opacity: f < T.nightEnd - 120 ? Math.min(1, n * 3) : 0, background: 'linear-gradient(180deg, #3D5F9E 0%, #7FA0D6 100%)' }} />
+      <AbsoluteFill style={{ opacity: f >= T.nightEnd - 120 ? Math.min(1, n * 3) : 0, background: 'linear-gradient(180deg, #7B78B8 0%, #F0A889 45%, #FFE9D6 100%)' }} />
       <AbsoluteFill style={{ opacity: n, background: `radial-gradient(ellipse at 50% 30%, ${color.nightTop} 0%, ${color.night} 70%)` }} />
     </AbsoluteFill>
   );
@@ -39,9 +39,9 @@ export const LaunchVideo = () => (
     <Audio src={staticFile('score.wav')} />
     <Backdrop />
 
-    <Fade from={T.open1} to={T.flatIn + 14} inDur={0} outDur={0}>
-      <Scene3D offset={T.open1} />
-      <Caption3D offset={T.open1} />
+    <Fade from={T.open1 - 8} to={T.flatIn + 14} inDur={12} outDur={0}>
+      <Scene3D offset={T.open1 - 8} />
+      <Caption3D offset={T.open1 - 8} />
     </Fade>
 
     <Fade from={T.flatIn} to={T.flatOut + 12} inDur={12} outDur={12}>
@@ -52,6 +52,10 @@ export const LaunchVideo = () => (
       <Scene3D offset={T.flatOut} />
       <Caption3D offset={T.flatOut} />
       <NightHud offset={T.flatOut} />
+    </Fade>
+
+    <Fade from={0} to={T.open1 + 4} inDur={0} outDur={12}>
+      <Problem />
     </Fade>
 
     <Fade from={T.stats} to={T.guard + 8} inDur={8} outDur={8}>

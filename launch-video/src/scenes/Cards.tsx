@@ -3,32 +3,42 @@ import { easeInOut, easeOut, Mono, prog, Rise } from '../kit';
 import { NIGHT } from '../night-log';
 import { SetupPanel } from '../Panels';
 import { color, font, T } from '../theme';
-import { night } from '../timeline';
 
-const CAPTION = 84;
-const CAPTION_W = 1180;
+/** 0: the problem, type only. */
+export function Problem() {
+  return (
+    <AbsoluteFill style={{ background: color.paper, justifyContent: 'center', paddingLeft: 150 }}>
+      <Rise text="Closing the lid" at={4} size={140} />
+      <Rise text="stops your agents?" at={10} size={140} />
+      <div style={{ marginTop: 36 }}>
+        <Rise text="Well, not anymore." at={T.problemB - 6} size={140} tone={color.blue} />
+      </div>
+    </AbsoluteFill>
+  );
+}
 
 /** Captions laid over the 3D shots. Frame is global. */
 export function Caption3D({ offset }: { offset: number }) {
   const f = useCurrentFrame() + offset;
-  const local = (a: number) => a - offset;
-  const line = (text: string, a: number, b: number) => {
+  const box = (child: React.ReactNode, a: number, b: number, top = false) => {
     if (f < a - 2 || f > b + 12) return null;
-    // A paper-coloured wash keeps the line readable when the camera pushes into the screen or the keyboard.
-    const wash = prog(f, a - 6, a + 6) * (1 - prog(f, b, b + 12)) * (1 - night(f));
     return (
-      <AbsoluteFill style={{ justifyContent: 'flex-end', padding: '0 150px 104px' }}>
-        <AbsoluteFill style={{ opacity: wash, background: `radial-gradient(ellipse 80% 62% at 0% 100%, rgba(247,249,252,0.97) 0%, rgba(247,249,252,0.9) 45%, rgba(247,249,252,0) 100%)` }} />
-        <Rise text={text} at={local(a)} out={local(b)} size={CAPTION} stagger={2} style={{ maxWidth: CAPTION_W, position: 'relative' }} />
-      </AbsoluteFill>
+      <AbsoluteFill style={{ justifyContent: top ? 'flex-start' : 'flex-end', padding: top ? '120px 150px 0' : '0 150px 110px' }}>{child}</AbsoluteFill>
     );
   };
+  const local = (a: number) => a - offset;
   return (
     <>
-      {/* Fully on screen from the first frame: a muted feed decides in about two seconds. */}
-      {line('When you close the lid, your Mac sleeps and your agent stops.', T.open1 - 40, T.reopen - 6)}
-      {line('LidAwake keeps your Mac awake with the lid closed.', T.reopen + 2, T.flatIn + 4)}
-      {line('Close the lid, and your agent keeps working.', T.flatOut + 8, T.closed2 + 24)}
+      {box(
+        <>
+          <Rise text="When you close the lid, the Mac sleeps" at={local(T.closed1 - 6)} out={local(T.reopen - 6)} size={92} />
+          <Rise text="and so do your agents." at={local(T.closed1 + 16)} out={local(T.reopen - 6)} size={92} />
+        </>,
+        T.closed1 - 6,
+        T.reopen,
+        true,
+      )}
+      {box(<Rise text="Then close the lid." at={local(T.flatOut + 8)} out={local(T.closed2 + 4)} size={96} />, T.flatOut + 8, T.closed2 + 4)}
     </>
   );
 }
@@ -37,12 +47,12 @@ export function Caption3D({ offset }: { offset: number }) {
 export function NightHud({ offset }: { offset: number }) {
   const f = useCurrentFrame() + offset;
   const a = T.closed2 + 16;
-  const b = T.nightEnd - 70;
+  const b = T.nightEnd - 92;
   const t = interpolate(f, [a, b], [0, NIGHT.length - 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: easeInOut });
   const i = Math.round(t);
   const [clock, battery] = NIGHT[i];
   // Only on a dark sky, so the white type never sits on the grey middle of the fade.
-  const vis = prog(f, T.closed2 + 28, T.closed2 + 42) * (1 - prog(f, T.nightEnd - 58, T.nightEnd - 46));
+  const vis = prog(f, T.closed2 + 36, T.closed2 + 52) * (1 - prog(f, T.nightEnd - 78, T.nightEnd - 62));
   if (vis <= 0) return null;
   const lines = NIGHT.slice(Math.max(0, i - 5), i + 1);
   return (
@@ -63,9 +73,6 @@ export function NightHud({ offset }: { offset: number }) {
         </div>
       </div>
       <div style={{ position: 'absolute', left: 150, bottom: 96 }}>
-        <Mono size={24} tone="rgba(214,226,255,0.7)" style={{ marginBottom: 14 }}>
-          This is the real log from that night.
-        </Mono>
         {lines.map(([c, bat], k) => (
           <Mono key={c} size={22} tone={`rgba(190,205,240,${0.25 + 0.6 * ((k + 1) / lines.length)})`} style={{ lineHeight: '34px' }}>
             {c} heartbeat lid=closed battery={bat}% power=battery thermal=nominal
@@ -94,75 +101,127 @@ export function Stats() {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill style={{ background: color.paper, padding: '150px 150px', justifyContent: 'center' }}>
-      <Rise text="The Mac stayed awake all night on battery." at={0} size={104} stagger={2} accent={['awake']} style={{ maxWidth: 1300 }} />
-      <Mono size={28} style={{ opacity: prog(f, 14, 28), marginTop: 26 }}>
-        one real night, Oct 13 to 14, 2026, MacBook unplugged
+      <Rise text="It keeps working." at={0} size={132} accent={['working']} />
+      <Mono size={28} style={{ opacity: prog(f, 16, 30), marginTop: 26 }}>
+        one real night · Oct 13–14, 2026 · MacBook, unplugged
       </Mono>
-      <div style={{ display: 'flex', gap: 120, marginTop: 72 }}>
-        <Stat big="8h 31m" label="with the lid closed" at={20} />
-        <Stat big="512" label="heartbeats in the log, one a minute" at={25} />
-        <Stat big="12%" label="of the battery used, 80% to 68%" at={30} />
-      </div>
-      <Mono size={22} style={{ opacity: prog(f, 40, 54), marginTop: 64 }} tone="#9CA3AF">
-        from ~/Library/Logs/LidAwake.log
-      </Mono>
-    </AbsoluteFill>
-  );
-}
-
-/** The guardrails, in one sentence. */
-export function Guardrails() {
-  const f = useCurrentFrame();
-  const icon = (src: string, at: number) => {
-    const p = prog(f, at, at + 16);
-    return <Img src={staticFile(src)} style={{ height: 150, opacity: p, transform: `translateX(${(1 - p) * -50}px) scale(${0.9 + 0.1 * p})` }} />;
-  };
-  return (
-    <AbsoluteFill style={{ background: color.paper, flexDirection: 'row', alignItems: 'center', padding: '0 150px', gap: 90 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 50, width: 240 }}>
-        {icon('battery-ink.png', 0)}
-        {icon('thermo-ink.png', 6)}
-      </div>
-      <div>
-        <Rise text="It lets your Mac sleep at 20% battery, or if it gets too hot." at={3} size={96} stagger={2} style={{ maxWidth: 1200 }} />
-        <Mono size={32} style={{ marginTop: 26, opacity: prog(f, 24, 38) }}>
-          You can set the battery limit to 10, 20, 30 or 50%.
-        </Mono>
+      <div style={{ display: 'flex', gap: 120, marginTop: 80 }}>
+        <Stat big="8h 31m" label="lid closed" at={26} />
+        <Stat big="512" label="heartbeats, one a minute, no gaps" at={32} />
+        <Stat big="12%" label="battery used, 80% to 68%" at={38} />
       </div>
     </AbsoluteFill>
   );
 }
 
-/** Setup, honestly: one password, once. */
-export function Password() {
+function Guard({ icon, line, sub, at, dur }: { icon: string; line: string; sub: string; at: number; dur: number }) {
   const f = useCurrentFrame();
-  const p = prog(f, 4, 26);
-  const leave = prog(f, 50, 58, easeInOut);
-  const swap = prog(f, 58, 68, easeInOut);
+  if (f < at || f >= at + dur) return null;
+  const local = f - at;
+  const p = prog(local, 0, 16);
+  const leave = prog(local, dur - 8, dur, easeInOut);
   return (
-    <AbsoluteFill style={{ background: color.paper }}>
-      <div style={{ position: 'absolute', left: 150, top: 360, width: 1080 }}>
-        <div style={{ opacity: 1 - leave, transform: `translateY(${-leave * 30}px)` }}>
-          <Rise text="Setup asks for your password one time." at={2} size={96} stagger={2} />
-          <Mono size={32} style={{ marginTop: 24, opacity: prog(f, 16, 30) }}>
-            It only lets LidAwake turn lid sleep on and off.
+    <AbsoluteFill style={{ flexDirection: 'row', alignItems: 'center', padding: '0 150px', gap: 90, opacity: 1 - leave }}>
+      <Img
+        src={staticFile(icon)}
+        style={{ height: 230, opacity: p, transform: `translateX(${(1 - p) * -60}px) scale(${0.9 + 0.1 * p})` }}
+      />
+      <div style={{ transform: `translateX(${leave * -40}px)` }}>
+        <Rise text={line} at={at + 3} size={112} style={{ whiteSpace: 'nowrap' }} />
+        <div style={{ opacity: prog(local, 14, 28) }}>
+          <Mono size={32} style={{ marginTop: 22 }}>
+            {sub}
           </Mono>
         </div>
-        <div style={{ position: 'absolute', top: 0, opacity: swap, transform: `translateY(${(1 - swap) * 30}px)` }}>
-          <Rise text="It needs no account and never goes online." at={60} size={96} stagger={2} />
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+/** The guardrails, fast. */
+export function Guardrails() {
+  return (
+    <AbsoluteFill style={{ background: color.paper }}>
+      <Guard icon="battery-ink.png" line="Stops at 20% battery." sub="then sleeps your Mac. pick 10, 20, 30 or 50" at={0} dur={60} />
+      <Guard icon="thermo-ink.png" line="Stops if it runs hot." sub="then sleeps your Mac" at={60} dur={60} />
+      <Guard icon="moon-ink.png" line="Off means normal sleep." sub="quit it, and normal sleep is back too" at={120} dur={60} />
+    </AbsoluteFill>
+  );
+}
+
+const BAR_K = 2; // menu bar points to video pixels
+const BAR_H = 37 * BAR_K;
+const BAR_CUP_X = 1452;
+const ink = '#1D1D1F';
+
+function BarIcon({ src, h, x }: { src: string; h: number; x: number }) {
+  return <Img src={staticFile(src)} style={{ position: 'absolute', left: x, top: (BAR_H - h) / 2, height: h }} />;
+}
+
+/** A light macOS menu bar, faded so the cup and its panel carry the shot. */
+function MenuBar({ fade }: { fade: number }) {
+  const text = { fontFamily: font.sans, fontSize: 13.5 * BAR_K, color: ink, letterSpacing: '-0.005em' } as const;
+  return (
+    <div style={{ position: 'absolute', left: 0, top: 0, width: 1920, height: BAR_H }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.72)', borderBottom: '1px solid rgba(0,0,0,0.06)' }} />
+      <div style={{ position: 'absolute', inset: 0, opacity: fade }}>
+        <BarIcon src="apple-ink.png" h={34} x={40} />
+        <div style={{ position: 'absolute', left: 104, top: 0, height: BAR_H, display: 'flex', alignItems: 'center', gap: 22 * BAR_K, ...text }}>
+          <span style={{ fontWeight: 700 }}>Finder</span>
+          {['File', 'Edit', 'View', 'Go', 'Window', 'Help'].map((m) => (
+            <span key={m}>{m}</span>
+          ))}
         </div>
+        <BarIcon src="battery75-ink.png" h={26} x={1514} />
+        <BarIcon src="wifi-ink.png" h={30} x={1590} />
+        <BarIcon src="search-ink.png" h={30} x={1652} />
+        <BarIcon src="control-ink.png" h={28} x={1710} />
+        <div style={{ position: 'absolute', right: 34, top: 0, height: BAR_H, display: 'flex', alignItems: 'center', ...text, fontWeight: 500 }}>
+          Tue 22:52
+        </div>
+      </div>
+      {/* The pressed highlight macOS draws behind the item whose panel is open. */}
+      <div style={{ position: 'absolute', left: BAR_CUP_X - 22, top: 6, width: 44, height: BAR_H - 12, borderRadius: 10, background: 'rgba(0,0,0,0.08)' }} />
+      <BarIcon src="cup-off-ink.png" h={34} x={BAR_CUP_X - 19} />
+    </div>
+  );
+}
+
+/** Setup, honestly: the panel under the cup, one Mac password. */
+export function Password() {
+  const f = useCurrentFrame();
+  const swapAt = T.swap - T.password;
+  const bar = prog(f, 0, 14);
+  const p = prog(f, 8, 28);
+  const leave = prog(f, swapAt - 8, swapAt, easeInOut);
+  const swap = prog(f, swapAt, swapAt + 10, easeInOut);
+  return (
+    <AbsoluteFill style={{ background: color.paper }}>
+      <div style={{ opacity: bar * (1 - swap * 0.6) }}>
+        <MenuBar fade={0.45} />
       </div>
       <div
         style={{
           position: 'absolute',
-          right: 150,
-          top: 300,
-          transformOrigin: '100% 0',
-          opacity: p * (1 - swap * 0.65),
-          transform: `scale(${1.5 + 0.05 * p}) translateY(${(1 - p) * 20}px)`,
+          left: BAR_CUP_X,
+          top: BAR_H + 8,
+          transformOrigin: '0 0',
+          opacity: p * (1 - swap * 0.6),
+          transform: `scale(${BAR_K * (0.97 + 0.03 * p)}) translate(-50%, ${(1 - p) * -6}px)`,
         }}
       >
         <SetupPanel />
+      </div>
+      <div style={{ position: 'absolute', left: 150, top: 400, width: 980 }}>
+        <div style={{ opacity: 1 - leave, transform: `translateY(${-leave * 30}px)` }}>
+          <Rise text="Set it up once with your Mac password." at={6} size={96} accent={['once']} />
+        </div>
+        <div style={{ position: 'absolute', top: 0, opacity: swap, transform: `translateY(${(1 - swap) * 30}px)` }}>
+          <Rise text="Nothing leaves your Mac." at={swapAt + 2} size={86} style={{ whiteSpace: 'nowrap' }} />
+          <Mono size={32} style={{ marginTop: 26, opacity: prog(f, swapAt + 16, swapAt + 30) }}>
+            a menu bar app. that's all
+          </Mono>
+        </div>
       </div>
     </AbsoluteFill>
   );
@@ -182,10 +241,10 @@ export function EndCard() {
         <Rise text="LidAwake" at={10} size={150} stagger={0} style={{ textAlign: 'center' }} />
       </div>
       <div style={{ marginTop: 18 }}>
-        <Rise text="Your agents keep running when you close the lid." at={18} size={54} weight={500} stagger={2} tone={color.mist} style={{ textAlign: 'center' }} />
+        <Rise text="Close the lid. Keep working." at={22} size={54} weight={500} tone={color.mist} style={{ textAlign: 'center' }} />
       </div>
-      <Mono size={24} tone="#9CA3AF" style={{ position: 'absolute', bottom: 90, opacity: prog(f, 36, 50) }}>
-        for MacBooks on macOS 14 or later
+      <Mono size={24} tone="#9CA3AF" style={{ position: 'absolute', bottom: 90, opacity: prog(f, 44, 60) }}>
+        for MacBooks · macOS 14 or later
       </Mono>
     </AbsoluteFill>
   );

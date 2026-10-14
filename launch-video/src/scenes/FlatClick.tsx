@@ -104,11 +104,11 @@ export function FlatClick() {
           background: 'linear-gradient(90deg, rgba(247,249,252,1) 0%, rgba(247,249,252,0.97) 36%, rgba(247,249,252,0) 62%)',
         }}
       />
-      <div style={{ position: 'absolute', left: 130, top: 520, width: 1000 }}>
-        <Rise text="Turn it on with one click." at={T.click - T.flatIn - 48} out={T.flatOut - T.flatIn - 14} size={140} stagger={3} />
+      <div style={{ position: 'absolute', left: 130, top: 480, width: 1000 }}>
+        <Rise text="One click turns it on." at={T.click - T.flatIn - 50} out={T.flatOut - T.flatIn - 14} size={160} stagger={4} />
       </div>
-      <div style={{ position: 'absolute', left: 136, top: 850, opacity: prog(f, T.click + 12, T.click + 28) }}>
-        <Rise text="Click it again to turn it off." at={T.click - T.flatIn + 12} out={T.flatOut - T.flatIn - 14} size={56} weight={500} stagger={2} tone="#4B5563" />
+      <div style={{ position: 'absolute', left: 136, top: 820, opacity: prog(f, T.click + 16, T.click + 34) }}>
+        <Rise text="Click again to turn it off." at={T.click - T.flatIn + 16} out={T.flatOut - T.flatIn - 14} size={56} weight={500} tone="#4B5563" />
       </div>
     </AbsoluteFill>
   );
