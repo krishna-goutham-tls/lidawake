@@ -30,5 +30,5 @@ Ship criteria are in `../brainstorming/mvp-plan.md`. Tick each one after it pass
 - Pick the real name
 - Open at login
 - Heat stop from real temperature, not only macOS thermal state (Lidless #34: thermal state stayed nominal while a closed Mac got very hot). See `../brainstorming/user-pain-research.md`
-- Auto-off when agents go quiet (taken by LidRun, Adrafinil, Hold My Lid)
+- Auto-off when agents go quiet
 - Developer ID signing and notarization before strangers install it

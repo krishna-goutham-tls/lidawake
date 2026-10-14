@@ -98,7 +98,7 @@ There is no network code and no analytics. Nothing leaves your Mac. macOS shows 
 
 ## Why not caffeinate
 
-`caffeinate`, Amphetamine-style timers and power assertions stop idle sleep only. Closing the lid still sleeps a MacBook unless an external display is attached. `pmset -a disablesleep 1` is the setting that stops lid sleep. It also stays on across restarts, so LidAwake turns it off again on every way out: switch off, quit, crash, battery, heat and the watchdog.
+`caffeinate`, keep-awake timers and power assertions stop idle sleep only. Closing the lid still sleeps a MacBook unless an external display is attached. `pmset -a disablesleep 1` is the setting that stops lid sleep. It also stays on across restarts, so LidAwake turns it off again on every way out: switch off, quit, crash, battery, heat and the watchdog.
 
 ## What it cannot fix
 
@@ -159,10 +159,6 @@ The launch video is code too: Remotion with a MacBook modelled in three.js. See 
 ## How it was made
 
 Built with [Factory](https://factory.ai) Droid running Claude Opus 5.5, in one session from 21:38 on 13 October to 11:21 on 14 October 2026. Droid's active time was 2 h 55 min, and that covers the research, the plan, four versions of the app, the launch video and the thumbnails. The Mac's first night with the lid shut was the test.
-
-## Other apps that do this
-
-[WakeBee](https://wakebee.app) gave me the idea. [caffeinate-disablesleep](https://github.com/demiaochen/caffeinate-disablesleep) uses the same `pmset` method. [LidRun](https://lidrun.com) and [Clamshell](https://clamshell.dev) are paid, notarized and do more.
 
 ## Licence
 
