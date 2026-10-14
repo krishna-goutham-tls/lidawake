@@ -29,6 +29,9 @@ struct Feedback: Equatable {
 final class PanelModel: ObservableObject {
     @Published var screen: PanelScreen = .setUp(turnOn: false)
     @Published var cutoff = Session.defaultCutoff
+    /// The popover keeps its view tree after closing, and a repeating symbol effect in it
+    /// keeps rendering offscreen at about 10% CPU. Animations run only while it is shown.
+    @Published var shown = false
 
     var runSetup: () -> SetupOutcome = { .cancelled }
     var switchOn: () -> Void = {}
@@ -126,9 +129,14 @@ final class PanelController: NSObject, NSPopoverDelegate {
         }
     }
 
+    func popoverWillShow(_ notification: Notification) {
+        model.shown = true
+    }
+
     func popoverDidClose(_ notification: Notification) {
         closeTask?.cancel()
         hovering = false
+        model.shown = false
     }
 }
 
@@ -149,6 +157,18 @@ struct PanelView: View {
             }
         }
         .onHover(perform: onHover)
+        .environment(\.cupAnimates, model.shown)
+    }
+}
+
+private struct CupAnimatesKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var cupAnimates: Bool {
+        get { self[CupAnimatesKey.self] }
+        set { self[CupAnimatesKey.self] = newValue }
     }
 }
 
@@ -156,12 +176,13 @@ struct PanelView: View {
 struct CupMark: View {
     let on: Bool
     var size: CGFloat = 26
+    @Environment(\.cupAnimates) private var animates
 
     var body: some View {
         Image(systemName: on ? "cup.and.heat.waves.fill" : "cup.and.saucer")
             .font(.system(size: size, weight: .regular))
             .foregroundStyle(on ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
-            .symbolEffect(.variableColor.iterative.dimInactiveLayers.nonReversing, options: .repeating, isActive: on)
+            .symbolEffect(.variableColor.iterative.dimInactiveLayers.nonReversing, options: .repeating, isActive: on && animates)
             .frame(height: size * 1.25, alignment: .bottomLeading)
     }
 }

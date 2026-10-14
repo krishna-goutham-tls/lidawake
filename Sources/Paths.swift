@@ -2,7 +2,7 @@ import Foundation
 
 enum Paths {
     static let bundleID = "space.thelaunch.lidawake"
-    static let version = "0.3.0"
+    static let version = "0.3.1"
 
     static var home: URL { FileManager.default.homeDirectoryForCurrentUser }
     static var supportDir: URL {

@@ -13,7 +13,7 @@ Ship criteria are in `../brainstorming/mvp-plan.md`. Tick each one after it pass
 - [ ] 7. Restart while on: sleep is restored after login
 - [x] 8. Quit restores normal sleep (2026-10-14, SleepDisabled back to 0)
 - [ ] 9. Remove permission deletes the sudoers rule and the LaunchAgent
-- [ ] 10. No idle CPU, no network calls
+- [ ] 10. No idle CPU, no network calls. 0.3.0 failed: about 10% CPU while on, from the cup animation still running in the closed panel. 0.3.1 stops it when the panel closes (0% in a repro). Re-measure on the installed 0.3.1 while on: `ps -o time= -p $(pgrep -x LidAwake)` twice, 10 s apart
 
 ## Next, after the MVP passes
 
