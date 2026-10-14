@@ -17,6 +17,14 @@ Ship criteria are in `../brainstorming/mvp-plan.md`. Tick each one after it pass
 - [ ] 11. Lid report (0.4.0): open the lid after 10 min closed while on, unlock, and a panel says how long it stayed awake (README test 11)
 - [ ] 12. Lid lock check (0.4.0): `sudo pmset -a disablesleep 0` while on is undone within 30 s (README test 12)
 
+## Launch (open source, 2026-10-14)
+
+- [x] Public repo `krishna-goutham-tls/lidawake`, MIT, README with install line, demo GIF, proof and trust section
+- [x] `scripts/install.sh`: build and install with no sudo
+- [ ] Release zip v0.4.0 on GitHub
+- [ ] Social preview image set in repo settings (`docs/social-preview.png`, Krishna)
+- [ ] Launch post on X
+
 ## Next, after the MVP passes
 
 - Pick the real name

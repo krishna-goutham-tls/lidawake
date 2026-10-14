@@ -1,10 +1,125 @@
+<p align="center">
+  <img src="docs/hero.png" alt="Your agents run even when you close the lid. LidAwake." width="100%">
+</p>
+
 # LidAwake
 
-A menu bar switch that keeps a MacBook running with the lid closed, so CLI agents such as Claude Code, Droid and Codex keep working. It turns itself off and sleeps the Mac at a battery cutoff or when macOS reports serious heat. When you open the lid, it tells you whether the Mac stayed awake.
+A free, open source menu bar app for macOS. Click the cup, close the lid, and your MacBook keeps running, so Claude Code, Codex, Droid and other CLI agents keep working through the night.
 
-Version 0.4.0. macOS 14 or later. Apple silicon and Intel. No network calls.
+It turns itself off and sleeps the Mac at a battery level you pick, or when macOS reports a heat warning. When you open the lid, it tells you whether the Mac really stayed awake.
 
-## Build
+<p align="center">
+  <img src="docs/demo.gif" alt="One click on the cup in the menu bar, then the lid closes and the agent keeps working through the night" width="100%">
+</p>
+
+Version 0.4.0 · macOS 14 or later · Apple silicon and Intel · no network code · MIT licence
+
+## Install
+
+Paste this into Claude Code, Codex or Droid:
+
+```text
+Install LidAwake for me: clone https://github.com/krishna-goutham-tls/lidawake.git into ~/lidawake
+and run ~/lidawake/scripts/install.sh. Then tell me to click the cup in the menu bar and choose "Allow once".
+```
+
+Or run it in Terminal yourself:
+
+```sh
+git clone https://github.com/krishna-goutham-tls/lidawake.git ~/lidawake && ~/lidawake/scripts/install.sh
+```
+
+The script builds the app on your Mac with Apple's Command Line Tools (`xcode-select --install` if you do not have them) and copies it to `/Applications`. It needs no sudo. An app you build yourself opens without a Gatekeeper warning.
+
+There is also a zip on the [Releases](https://github.com/krishna-goutham-tls/lidawake/releases) page. It is not notarized yet, so macOS blocks the first open. Open it once, then go to System Settings → Privacy & Security and click **Open Anyway**.
+
+## Use
+
+1. The first time, a panel drops down from the cup. Click **Allow once** and enter your Mac password. You do this once.
+
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="docs/panel-ready-dark.png">
+     <img src="docs/panel-ready-light.png" alt="Ready. This icon is your switch." width="300">
+   </picture>
+
+2. Click the cup. It starts steaming. Close the lid.
+
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="docs/panel-on-dark.png">
+     <img src="docs/panel-on-light.png" alt="On. Close the lid any time." width="300">
+   </picture>
+
+3. Click the cup again to turn it off. Off means normal sleep.
+
+Right-click the cup for settings: time on and battery, the battery cutoff, the log, removing the permission, and Quit.
+
+## Proof, from the first night
+
+<p align="center">
+  <img src="docs/night-log.png" alt="The log from 22:54 to 07:25 with the lid closed, battery 80% to 68%" width="100%">
+</p>
+
+On 13 October 2026 the lid stayed shut from 22:54 to 07:25, on battery. The log has a heartbeat every minute, 512 in a row with no gap, and the battery went from 80% to 68%.
+
+You get the same proof on your Mac. Every minute while it is on, the app writes a line to `~/Library/Logs/LidAwake.log`:
+
+```
+2026-10-13T23:10:00+0530 [app] heartbeat lid=closed battery=81% power=battery thermal=nominal sleepDisabled=1
+```
+
+When you open the lid after 5 minutes or more, a panel says how long the Mac stayed awake and how much battery it used. If its 30-second checks show a gap of more than 90 seconds, it says the Mac may have slept. The menu keeps the result as `last lid close`.
+
+## When it stops
+
+- On battery, at the cutoff. The default is 20%. Change it under **Stop at battery**.
+- When macOS reports a serious or critical heat state.
+- When you click the cup, quit the app, or the app is killed.
+
+Each time, it turns closed-lid mode off and lets the Mac sleep. If the app crashes, a watchdog restores normal sleep within about a minute, and sleeps the Mac if the lid is shut. Every 30 seconds the app also checks that the setting still matches the cup, and puts it back if something reset it.
+
+Keep the Mac on a hard, ventilated surface. Do not run it inside a bag.
+
+## What it changes on your Mac
+
+Read this before you click **Allow once**. The scripts are in [`Resources/`](Resources).
+
+| What | Where | Why |
+|---|---|---|
+| A sudoers rule for your user, two commands only | `/etc/sudoers.d/lidawake` | So the cup can run `pmset` without a password each time |
+| A watchdog | `~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist` | Restores normal sleep if the app dies |
+| A log | `~/Library/Logs/LidAwake.log` | Your proof, and the place to look when something goes wrong |
+
+The whole sudoers rule is one line:
+
+```
+you ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1
+```
+
+There is no network code and no analytics. Nothing leaves your Mac. macOS shows a one-time "Background Items Added" alert for the watchdog, and lists it under System Settings → General → Login Items.
+
+## Why not caffeinate
+
+`caffeinate`, Amphetamine-style timers and power assertions stop idle sleep only. Closing the lid still sleeps a MacBook unless an external display is attached. `pmset -a disablesleep 1` is the setting that stops lid sleep. It also stays on across restarts, so LidAwake turns it off again on every way out: switch off, quit, crash, battery, heat and the watchdog.
+
+## What it cannot fix
+
+- Keeping the Mac awake does not keep it online. If you leave your Wi-Fi, cloud-backed agents stop.
+- An agent that waits for a permission prompt or hits a usage limit stays stuck, lid open or closed.
+- If the Mac restarts while the switch is on, it stays awake at the login screen until you log in. The watchdog restores normal sleep right after login.
+
+## Uninstall
+
+Right-click the cup, click **Remove closed-lid permission**, quit the app, and delete it from `/Applications`. If the app is gone already:
+
+```sh
+sudo rm -f /etc/sudoers.d/lidawake && sudo pmset -a disablesleep 0
+launchctl bootout gui/$(id -u)/space.thelaunch.lidawake.watchdog
+rm -f ~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist
+rm -rf ~/Library/Application\ Support/LidAwake
+```
+
+<details>
+<summary><b>Build from source and test it</b></summary>
 
 ```sh
 ./build.sh                  # makes build/LidAwake.app, ad-hoc signed
@@ -20,48 +135,7 @@ build/LidAwake.app/Contents/MacOS/LidAwake --render-iconset /tmp/AppIcon.iconset
 iconutil -c icns /tmp/AppIcon.iconset -o Resources/AppIcon.icns
 ```
 
-## Install
-
-1. Copy `build/LidAwake.app` to `/Applications`. Setup runs the bundled scripts as root, so keep the app somewhere only an admin can change.
-2. Open it. A cup icon appears in the menu bar, and the first time a panel drops down from it.
-3. Click **Allow once** and enter your Mac password once. The panel says "Ready. This icon is your switch." Click **Turn on now**, or **Later**.
-
-Setup adds `/etc/sudoers.d/lidawake`, which lets your user run only `pmset -a disablesleep 0` and `pmset -a disablesleep 1` without a password. It also adds a watchdog LaunchAgent at `~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist`, which runs `~/Library/Application Support/LidAwake/LidAwake Watchdog`. macOS shows a one-time "Background Items Added" alert for it, and lists it in System Settings → General → Login Items.
-
-## Use
-
-Click the cup. It starts steaming, and a small panel under it says "On. Close the lid any time." Close the lid. Click the cup again to turn it off.
-
-Right-click the cup, or Control-click it, for settings. The top line shows how long it has been on and the battery level. Below it: Turn on or off, battery cutoff, How it works, the log, removing the permission, and Quit.
-
-If closed-lid mode is not set up yet, clicking the cup opens the setup panel with **Allow and turn on**, which sets it up and turns it on in one step.
-
-It switches off and sleeps the Mac when:
-
-- it is on battery and the battery reaches the cutoff (default 20%, change it under **Stop at battery**)
-- macOS reports a serious or critical thermal state
-
-Keep the Mac on a hard, ventilated surface. Do not run it inside a bag.
-
-## What can go wrong
-
-- Keeping the Mac awake does not keep it online. If you leave your Wi-Fi, cloud-backed agents stop.
-- An agent waiting for a permission prompt or hitting a usage limit stays stuck, lid open or closed.
-- If the Mac restarts while the switch is on, it stays awake at the login screen until you log in. The watchdog restores normal sleep right after login.
-
-## Check that it worked
-
-Every minute while the switch is on, the app writes a line to `~/Library/Logs/LidAwake.log`:
-
-```
-2026-10-13T23:10:00+0530 [app] heartbeat lid=closed battery=81% power=battery thermal=nominal sleepDisabled=1
-```
-
-Lines with `lid=closed` one minute apart prove the Mac stayed awake with the lid shut. **Open log** in the menu opens the file.
-
-While the switch is on, the app checks every 30 s. When the lid opens after 5 min or more, a panel reports how long the Mac stayed awake and the battery used. A gap of more than 90 s between checks means the Mac may have slept, and the panel says so. The same result stays in the menu as `last lid close`, and the log has a `lid record` line.
-
-## MVP test, on your Mac
+Plain `swiftc`, AppKit, no Xcode project and no dependencies.
 
 | # | Do this | Pass when |
 |---|---|---|
@@ -79,13 +153,18 @@ While the switch is on, the app checks every 30 s. When the lid opens after 5 mi
 | 11 | Switch on, close the lid for 10 min, open it and unlock | A panel says "Your Mac stayed awake 10 min with the lid closed." The menu shows a `last lid close` line |
 | 12 | Switch on, then in Terminal run `sudo pmset -a disablesleep 0` | Within 30 s the log says closed-lid mode was turned on again, and `SleepDisabled` is `1` |
 
-## Uninstall
+The launch video is code too: Remotion with a MacBook modelled in three.js. See [`launch-video/`](launch-video).
 
-Click **Remove closed-lid permission**, quit the app, and delete it from `/Applications`. If the app is gone already:
+</details>
 
-```sh
-sudo rm -f /etc/sudoers.d/lidawake && sudo pmset -a disablesleep 0
-launchctl bootout gui/$(id -u)/space.thelaunch.lidawake.watchdog
-rm -f ~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist
-rm -rf ~/Library/Application\ Support/LidAwake
-```
+## How it was made
+
+Built with [Factory](https://factory.ai) Droid running Claude Opus 5.5, in one session from 21:38 on 13 October to 11:21 on 14 October 2026. Droid's active time was 2 h 55 min, and that covers the research, the plan, four versions of the app, the launch video and the thumbnails. The Mac's first night with the lid shut was the test.
+
+## Other apps that do this
+
+[WakeBee](https://wakebee.app) gave me the idea. [caffeinate-disablesleep](https://github.com/demiaochen/caffeinate-disablesleep) uses the same `pmset` method. [LidRun](https://lidrun.com) and [Clamshell](https://clamshell.dev) are paid, notarized and do more. [LidAwake-Mac](https://github.com/deezeddd/LidAwake-Mac) is a separate project with the same name.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
