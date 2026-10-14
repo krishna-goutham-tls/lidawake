@@ -19,14 +19,17 @@ Version 0.4.0 · macOS 14 or later · Apple silicon and Intel · no network code
 Paste this into Claude Code, Codex or Droid:
 
 ```text
-Install LidAwake for me: clone https://github.com/krishna-goutham-tls/lidawake.git into ~/lidawake
-and run ~/lidawake/scripts/install.sh. Then tell me to click the cup in the menu bar and choose "Allow once".
+Install LidAwake for me.
+Clone https://github.com/krishna-goutham-tls/lidawake.git into ~/lidawake
+and run ~/lidawake/scripts/install.sh.
+Then tell me to click the cup in the menu bar and choose "Allow once".
 ```
 
 Or run it in Terminal yourself:
 
 ```sh
-git clone https://github.com/krishna-goutham-tls/lidawake.git ~/lidawake && ~/lidawake/scripts/install.sh
+git clone https://github.com/krishna-goutham-tls/lidawake.git ~/lidawake
+~/lidawake/scripts/install.sh
 ```
 
 The script builds the app on your Mac with Apple's Command Line Tools (`xcode-select --install` if you do not have them) and copies it to `/Applications`. It needs no sudo. An app you build yourself opens without a Gatekeeper warning.
@@ -61,11 +64,7 @@ Right-click the cup for settings: time on and battery, the battery cutoff, the l
 
 On 13 October 2026 the lid stayed shut from 22:54 to 07:25, on battery. The log has a heartbeat every minute, 512 in a row with no gap, and the battery went from 80% to 68%.
 
-You get the same proof on your Mac. Every minute while it is on, the app writes a line to `~/Library/Logs/LidAwake.log`:
-
-```
-2026-10-13T23:10:00+0530 [app] heartbeat lid=closed battery=81% power=battery thermal=nominal sleepDisabled=1
-```
+You get the same proof on your Mac. Every minute while it is on, the app writes a heartbeat line to `~/Library/Logs/LidAwake.log`, with the lid state, the battery and the heat state. **Open log** in the menu opens the file.
 
 When you open the lid after 5 minutes or more, a panel says how long the Mac stayed awake and how much battery it used. If its 30-second checks show a gap of more than 90 seconds, it says the Mac may have slept. The menu keeps the result as `last lid close`.
 
