@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { useCurrentFrame, useVideoConfig } from 'remotion';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { drawScreen, SCREEN_H, SCREEN_IMAGES, SCREEN_W } from '../screen/drawScreen';
+import { drawScreen, SCREEN_H, SCREEN_IMAGES, SCREEN_W, type ScreenState } from '../screen/drawScreen';
 import { useImagesReady } from '../useImages';
 import { camera, lidAngle, night, screenState } from '../timeline';
 import { MacBook } from './MacBook';
@@ -23,9 +23,17 @@ function Environment() {
   return null;
 }
 
-function CameraRig({ f }: { f: number }) {
+export type Pose = ReturnType<typeof camera>;
+
+/** Everything one frame of the 3D shot depends on. */
+export type Shot = { pose: Pose; lid: number; n: number; screen: ScreenState };
+
+export function shotAt(f: number): Shot {
+  return { pose: camera(f), lid: lidAngle(f), n: night(f), screen: screenState(f) };
+}
+
+function CameraRig({ pose }: { pose: Pose }) {
   const { camera: cam } = useThree();
-  const pose = camera(f);
   cam.position.set(...pose.pos);
   cam.lookAt(...pose.target);
   cam.updateProjectionMatrix();
@@ -54,8 +62,8 @@ function Shadow({ strength }: { strength: number }) {
   );
 }
 
-function World({ f }: { f: number }) {
-  const n = night(f);
+function World({ shot }: { shot: Shot }) {
+  const { n } = shot;
   const { canvas, texture } = useMemo(() => {
     const c = document.createElement('canvas');
     c.width = SCREEN_W;
@@ -67,18 +75,18 @@ function World({ f }: { f: number }) {
   }, []);
 
   const ctx = canvas.getContext('2d')!;
-  drawScreen(ctx, screenState(f));
+  drawScreen(ctx, shot.screen);
   texture.needsUpdate = true;
 
   const key = new THREE.Color('#FFFFFF').lerp(new THREE.Color('#7FA4FF'), n);
   return (
     <>
       <Environment />
-      <CameraRig f={f} />
+      <CameraRig pose={shot.pose} />
       <ambientLight intensity={0.35 - 0.25 * n} />
       <directionalLight position={[3, 6, 4]} intensity={2.2 - 1.6 * n} color={key} />
       <directionalLight position={[-5, 2, -3]} intensity={0.6 + 1.4 * n} color={n > 0.5 ? '#6E8FFF' : '#FFFFFF'} />
-      <MacBook lidAngle={lidAngle(f)} screen={texture} />
+      <MacBook lidAngle={shot.lid} screen={texture} />
       <Shadow strength={0.55 - 0.25 * n} />
     </>
   );
@@ -87,16 +95,19 @@ function World({ f }: { f: number }) {
 /** Frames are absolute so a scene mounted in a Sequence keeps the global timeline. */
 export function Scene3D({ offset }: { offset: number }) {
   const local = useCurrentFrame();
+  return <Scene3DShot shot={shotAt(local + offset)} />;
+}
+
+export function Scene3DShot({ shot, fov = 30 }: { shot: Shot; fov?: number }) {
   const { width, height } = useVideoConfig();
-  const f = local + offset;
-  const n = night(f);
+  const { n } = shot;
   const ready = useImagesReady(SCREEN_IMAGES);
   if (!ready) return null;
   return (
     <ThreeCanvas
       width={width}
       height={height}
-      camera={{ fov: 30, near: 0.1, far: 100 }}
+      camera={{ fov, near: 0.1, far: 100 }}
       gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
       onCreated={({ gl, scene }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
@@ -106,7 +117,7 @@ export function Scene3D({ offset }: { offset: number }) {
       style={{ position: 'absolute', inset: 0, opacity: 1 }}
     >
       <group>
-        <World f={f} />
+        <World shot={shot} />
       </group>
       {/* Exposure follows the evening-to-night move. */}
       <ExposureRig n={n} />
