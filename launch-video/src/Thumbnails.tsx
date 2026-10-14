@@ -42,7 +42,7 @@ const nightSky = `radial-gradient(ellipse at 68% 40%, #1A2B52 0%, ${color.nightT
 /** A: the lid is shut and the work goes on. */
 export function ThumbA() {
   const shot: Shot = {
-    pose: { pos: [3.4, 2.1, 5.2], target: [-1.25, 0.55, -0.4] },
+    pose: { pos: [3.4, 2.1, 5.2], target: [-1.45, 0.62, -0.4] },
     lid: 0,
     n: 1,
     screen: { clock: 'Wed 03:04', cupOn: true, progress: 0.6, done: false, brightness: 0 },
@@ -57,12 +57,12 @@ export function ThumbA() {
     <AbsoluteFill style={{ background: nightSky }}>
       <Scene3DShot shot={shot} />
       {/* Light pooled on the lid under the card, and a callout tying the card to this laptop. */}
-      <div style={{ position: 'absolute', left: 1010, top: 640, width: 720, height: 220, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(110,165,255,0.38) 0%, rgba(110,165,255,0) 70%)', mixBlendMode: 'screen' }} />
-      <div style={{ position: 'absolute', left: 1429, top: 372, width: 2, height: 376, background: 'linear-gradient(180deg, rgba(140,175,255,0.6), rgba(140,175,255,0.15))' }} />
-      <div style={{ position: 'absolute', left: 1420, top: 740, width: 20, height: 20, borderRadius: 10, background: NIGHT_BLUE, boxShadow: `0 0 24px ${NIGHT_BLUE}, 0 0 60px rgba(110,165,255,0.6)` }} />
+      <div style={{ position: 'absolute', left: 1050, top: 730, width: 720, height: 220, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(110,165,255,0.38) 0%, rgba(110,165,255,0) 70%)', mixBlendMode: 'screen' }} />
+      <div style={{ position: 'absolute', left: 1469, top: 650, width: 2, height: 186, background: 'linear-gradient(180deg, rgba(140,175,255,0.6), rgba(140,175,255,0.15))' }} />
+      <div style={{ position: 'absolute', left: 1460, top: 828, width: 20, height: 20, borderRadius: 10, background: NIGHT_BLUE, boxShadow: `0 0 24px ${NIGHT_BLUE}, 0 0 60px rgba(110,165,255,0.6)` }} />
       <Headline
-        lines={['Lid closed.', 'Still coding.']}
-        size={176}
+        lines={['Your agents run even when', 'you close the lid.']}
+        size={128}
         tone="#FFFFFF"
         accentTone={NIGHT_BLUE}
         accentFrom={1}
@@ -72,7 +72,7 @@ export function ThumbA() {
         style={{
           position: 'absolute',
           right: 110,
-          top: 96,
+          top: 400,
           width: 690,
           padding: '30px 36px',
           borderRadius: 26,
@@ -93,7 +93,7 @@ export function ThumbA() {
         {row('◐', NIGHT_BLUE, '6/9 Update the fixtures…', '#FFFFFF')}
         <div style={{ color: '#8B93A1', fontSize: 25, marginTop: 8 }}>03:04 · lid closed · battery 72%</div>
       </div>
-      <Brand dark style={{ left: 116, top: 560 }} />
+      <Brand dark style={{ left: 116, top: 480 }} />
     </AbsoluteFill>
   );
 }
@@ -113,8 +113,8 @@ export function ThumbB() {
   return (
     <AbsoluteFill style={{ background: `radial-gradient(ellipse at 30% 20%, #18233C 0%, #0B1020 60%, #070A13 100%)` }}>
       <Headline
-        lines={['Lid closed 8h 31m.', 'Never slept.']}
-        size={156}
+        lines={['My Mac ran all night', 'with the lid closed.']}
+        size={136}
         tone="#FFFFFF"
         accentTone={NIGHT_BLUE}
         accentFrom={1}
@@ -157,7 +157,7 @@ export function ThumbB() {
 /** C: the pain, then the fix, in daylight. */
 export function ThumbC() {
   const shot: Shot = {
-    pose: { pos: [4.6, 2.3, 5.6], target: [-2.35, 0.7, -0.35] },
+    pose: { pos: [5.4, 2.7, 6.6], target: [-2.5, 1.1, -0.35] },
     lid: 0.62,
     n: 0,
     screen: { clock: 'Tue 22:54', cupOn: false, progress: 0.32, done: false, brightness: 1 },
@@ -166,14 +166,14 @@ export function ThumbC() {
     <AbsoluteFill style={{ background: `radial-gradient(ellipse at 70% 45%, #FFFFFF 0%, ${color.paper} 50%, #E6EDF7 100%)` }}>
       <Scene3DShot shot={shot} />
       <Headline
-        lines={['Close the lid,', 'your agent stops.', 'Not anymore.']}
-        size={132}
+        lines={['When you close the lid,', 'your agent stops.', 'LidAwake fixes that.']}
+        size={120}
         tone={color.ink}
         accentTone={color.blue}
         accentFrom={2}
         style={{ position: 'absolute', left: 110, top: 96 }}
       />
-      <Brand dark={false} style={{ left: 116, top: 600 }} />
+      <Img src={staticFile('appicon.png')} style={{ position: 'absolute', left: 112, top: 560, height: 110, filter: 'drop-shadow(0 10px 24px rgba(0,0,0,0.2))' }} />
     </AbsoluteFill>
   );
 }

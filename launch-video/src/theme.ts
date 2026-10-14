@@ -20,26 +20,25 @@ export const font = {
 };
 
 /** Shot boundaries in frames. Everything else reads from here. */
+// tools/score.py parses this block, so keep one `name: number,` per line.
 export const T = {
-  problemA: 0,
-  problemB: 48,
-  open1: 96, // 3D starts
-  close1: 156,
-  closed1: 184,
-  reopen: 246,
-  push1: 272,
-  flatIn: 318, // flat desktop crossfade in
-  click: 392,
-  flatOut: 486, // back to 3D
-  close2: 528,
-  closed2: 556,
-  nightEnd: 822,
-  open3: 822,
-  done3: 856,
-  threeEnd: 966,
-  stats: 966,
-  guard: 1086,
-  password: 1266,
-  end: 1386,
-  total: 1536,
+  open1: 0, // 3D from the first frame
+  close1: 66,
+  closed1: 94,
+  reopen: 140,
+  push1: 166,
+  flatIn: 200, // flat desktop crossfade in
+  click: 270,
+  flatOut: 336, // back to 3D
+  close2: 366,
+  closed2: 394,
+  nightEnd: 604,
+  open3: 604,
+  done3: 638,
+  threeEnd: 714,
+  stats: 714,
+  guard: 814,
+  password: 914,
+  end: 1024,
+  total: 1124,
 };
