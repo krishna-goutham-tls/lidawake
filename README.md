@@ -56,25 +56,13 @@ There is also a zip on the [Releases](https://github.com/krishna-goutham-tls/lid
 
 Right-click the cup for settings: time on and battery, the battery cutoff, the log, removing the permission, and Quit.
 
-## Proof, from the first night
-
-<p align="center">
-  <img src="docs/night-log.png" alt="The log from 22:54 to 07:25 with the lid closed, battery 80% to 68%" width="100%">
-</p>
-
-On 13 October 2026 the lid stayed shut from 22:54 to 07:25, on battery. The log has a heartbeat every minute, 512 in a row with no gap, and the battery went from 80% to 68%.
-
-You get the same proof on your Mac. Every minute while it is on, the app writes a heartbeat line to `~/Library/Logs/LidAwake.log`, with the lid state, the battery and the heat state. **Open log** in the menu opens the file.
-
-When you open the lid after 5 minutes or more, a panel says how long the Mac stayed awake and how much battery it used. If its 30-second checks show a gap of more than 90 seconds, it says the Mac may have slept. The menu keeps the result as `last lid close`.
-
 ## When it stops
 
 - On battery, at the cutoff. The default is 20%. Change it under **Stop at battery**.
 - When macOS reports a serious or critical heat state.
 - When you click the cup, quit the app, or the app is killed.
 
-Each time, it turns closed-lid mode off and lets the Mac sleep. If the app crashes, a watchdog restores normal sleep within about a minute, and sleeps the Mac if the lid is shut. Every 30 seconds the app also checks that the setting still matches the cup, and puts it back if something reset it.
+Each time, it turns closed-lid mode off and lets the Mac sleep. If the app crashes, a watchdog restores normal sleep within about a minute, and sleeps the Mac if the lid is shut. The app also keeps checking that the setting matches the cup, and puts it back if something reset it.
 
 Keep the Mac on a hard, ventilated surface. Do not run it inside a bag.
 
@@ -86,7 +74,7 @@ Read this before you click **Allow once**. The scripts are in [`Resources/`](Res
 |---|---|---|
 | A sudoers rule for your user, two commands only | `/etc/sudoers.d/lidawake` | So the cup can run `pmset` without a password each time |
 | A watchdog | `~/Library/LaunchAgents/space.thelaunch.lidawake.watchdog.plist` | Restores normal sleep if the app dies |
-| A log | `~/Library/Logs/LidAwake.log` | Your proof, and the place to look when something goes wrong |
+| A log | `~/Library/Logs/LidAwake.log` | The place to look when something goes wrong |
 
 The whole sudoers rule is one line:
 
@@ -155,10 +143,6 @@ Plain `swiftc`, AppKit, no Xcode project and no dependencies.
 The launch video is code too: Remotion with a MacBook modelled in three.js. See [`launch-video/`](launch-video).
 
 </details>
-
-## How it was made
-
-Built with [Factory](https://factory.ai) Droid running Claude Opus 5.5, in one session from 21:38 on 13 October to 11:21 on 14 October 2026. Droid's active time was 2 h 55 min, and that covers the research, the plan, four versions of the app, the launch video and the thumbnails. The Mac's first night with the lid shut was the test.
 
 ## Licence
 
