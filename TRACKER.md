@@ -21,8 +21,8 @@ Ship criteria are in `../brainstorming/mvp-plan.md`. Tick each one after it pass
 
 - [x] Public repo `krishna-goutham-tls/lidawake`, MIT, README with install line, demo GIF, proof and trust section
 - [x] `scripts/install.sh`: build and install with no sudo
-- [ ] Release zip v0.4.0 on GitHub
-- [ ] Social preview image set in repo settings (`docs/social-preview.png`, Krishna)
+- [x] Release zip v0.4.0 on GitHub (2026-10-14, `LidAwake.zip`)
+- [x] Social preview image set in repo settings (`docs/social-preview.png`, seen 2026-11-03)
 - [ ] Launch post on X
 
 ## Next, after the MVP passes
