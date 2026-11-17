@@ -1,7 +1,7 @@
 #!/bin/bash
 # Installs LidAwake in /Applications. Needs no sudo.
 #
-#   scripts/install.sh                 downloads the latest release zip from GitHub
+#   scripts/install.sh                 downloads the latest release DMG from GitHub
 #   scripts/install.sh --from-source   builds this checkout with Apple's Command Line Tools
 #
 # GitHub counts each release download, which is the only install count this project has.
@@ -10,7 +10,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-URL="https://github.com/krishna-goutham-tls/lidawake/releases/latest/download/LidAwake.zip"
+URL="https://github.com/krishna-goutham-tls/lidawake/releases/latest/download/LidAwake.dmg"
 
 if [ "${1:-}" = "--from-source" ]; then
     if ! xcrun --find swiftc >/dev/null 2>&1; then
@@ -22,16 +22,18 @@ if [ "${1:-}" = "--from-source" ]; then
     APP="build/LidAwake.app"
 else
     TMP=$(mktemp -d)
-    trap 'rm -rf "$TMP"' EXIT
+    MNT="$TMP/mnt"
+    trap 'hdiutil detach -quiet "$MNT" 2>/dev/null || true; rm -rf "$TMP"' EXIT
     echo "==> downloading the latest LidAwake release"
-    if ! curl -fsSL "$URL" -o "$TMP/LidAwake.zip"; then
+    if ! curl -fsSL "$URL" -o "$TMP/LidAwake.dmg"; then
         echo "The download failed. To build it on this Mac instead, run: $0 --from-source" >&2
         exit 1
     fi
-    ditto -x -k "$TMP/LidAwake.zip" "$TMP"
-    APP="$TMP/LidAwake.app"
+    mkdir -p "$MNT"
+    hdiutil attach -quiet -nobrowse -readonly -mountpoint "$MNT" "$TMP/LidAwake.dmg"
+    APP="$MNT/LidAwake.app"
     if [ ! -d "$APP" ]; then
-        echo "The release zip has no LidAwake.app inside. Try: $0 --from-source" >&2
+        echo "The release DMG has no LidAwake.app inside. Try: $0 --from-source" >&2
         exit 1
     fi
 fi

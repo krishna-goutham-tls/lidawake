@@ -12,11 +12,13 @@ It turns itself off and sleeps the Mac at a battery level you pick, or when macO
   <img src="docs/demo.gif" alt="One click on the cup in the menu bar, then the lid closes and the agent keeps working through the night" width="100%">
 </p>
 
-Version 0.4.0 · macOS 14 or later · Apple silicon and Intel · no network code · MIT licence
+Version 0.5.0 · macOS 14 or later · Apple silicon and Intel · no network code · MIT licence
 
 ## Install
 
-Paste this into Claude Code, Codex or Droid:
+[Download LidAwake.dmg](https://github.com/krishna-goutham-tls/lidawake/releases/latest/download/LidAwake.dmg), open it and drag LidAwake to Applications. The app is signed with a Developer ID and notarized by Apple, so it opens like any app.
+
+Or paste this into Claude Code, Codex or Droid:
 
 ```text
 Install LidAwake for me.
@@ -35,8 +37,6 @@ git clone https://github.com/krishna-goutham-tls/lidawake.git ~/lidawake
 The script downloads the latest release from GitHub and copies the app to `/Applications`. It needs no sudo and no developer tools. GitHub's download count is the only install count this project keeps. The app itself never goes online.
 
 To build it on your Mac instead, run `~/lidawake/scripts/install.sh --from-source`. That needs Apple's Command Line Tools (`xcode-select --install`).
-
-You can also download the zip from the [Releases](https://github.com/krishna-goutham-tls/lidawake/releases) page in a browser. It is not notarized yet, so macOS blocks the first open. Open it once, then go to System Settings → Privacy & Security and click **Open Anyway**.
 
 ## Use
 
@@ -126,7 +126,7 @@ iconutil -c icns /tmp/AppIcon.iconset -o Resources/AppIcon.icns
 
 Plain `swiftc`, AppKit, no Xcode project and no dependencies.
 
-To release, build, then zip with `ditto -c -k --keepParent build/LidAwake.app LidAwake.zip` and attach it to a new GitHub release as `LidAwake.zip`. `install.sh` always fetches the latest release by that name.
+To release, raise the version in `build.sh`, build, then run the shared kit: `active-tls/mac-release/repo/release.sh build/LidAwake.app --publish krishna-goutham-tls/lidawake`. It signs, notarizes and publishes `LidAwake.dmg`. `install.sh` always fetches the latest release by that name.
 
 | # | Do this | Pass when |
 |---|---|---|
