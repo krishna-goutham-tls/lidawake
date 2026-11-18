@@ -42,6 +42,56 @@ if let index = arguments.firstIndex(of: "--preview-panel") {
     exit(0)
 }
 
+/// The activity window, with no switch and no session. Both modes only read a log file.
+/// Usage: LidAwake --preview-report out.png [--dark] [--card] [--log file] [--pick n]
+///        LidAwake --report [--log file]
+///        LidAwake --sample-activity
+func reportLog() -> URL {
+    if let index = arguments.firstIndex(of: "--log"), arguments.count > index + 1 {
+        return URL(fileURLWithPath: arguments[index + 1])
+    }
+    return Paths.logFile
+}
+
+/// Looks at the process table twice, 21 s apart, and prints the fields a heartbeat would log.
+if arguments.contains("--sample-activity") {
+    let fields: String? = MainActor.assumeIsolated {
+        let monitor = ActivityMonitor()
+        _ = monitor.sample()
+        Thread.sleep(forTimeInterval: 21)
+        return monitor.sample()
+    }
+    print(fields ?? "could not read the process table")
+    exit(fields == nil ? 1 : 0)
+}
+
+if let index = arguments.firstIndex(of: "--preview-report") {
+    let path = arguments.count > index + 1 ? arguments[index + 1] : "/tmp/report.png"
+    var pick = 0
+    if let at = arguments.firstIndex(of: "--pick"), arguments.count > at + 1 { pick = Int(arguments[at + 1]) ?? 0 }
+    MainActor.assumeIsolated {
+        _ = NSApplication.shared
+        snapshotReport(log: reportLog(), pick: pick, dark: arguments.contains("--dark"), card: arguments.contains("--card"), to: path)
+    }
+    exit(0)
+}
+
+if arguments.contains("--report") {
+    MainActor.assumeIsolated {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        let controller = ReportWindowController()
+        controller.model.logURL = reportLog()
+        controller.model.openLog = { NSWorkspace.shared.open(controller.model.logURL) }
+        controller.onClose = { exit(0) }
+        controller.show()
+        withExtendedLifetime(controller) {
+            app.run()
+        }
+    }
+    exit(0)
+}
+
 if let index = arguments.firstIndex(of: "--render-iconset") {
     let path = arguments.count > index + 1 ? arguments[index + 1] : "/tmp/AppIcon.iconset"
     let ok = MainActor.assumeIsolated {
@@ -49,6 +99,31 @@ if let index = arguments.firstIndex(of: "--render-iconset") {
         return renderIconset(to: path)
     }
     exit(ok ? 0 : 1)
+}
+
+if let status = Updater.commandLineTest(CommandLine.arguments) {
+    exit(status)
+}
+
+/// Usage: --preview-update out.png available|checking|uptodate|downloading|failed [--dark]
+if let index = CommandLine.arguments.firstIndex(of: "--preview-update"), CommandLine.arguments.count > index + 2 {
+    let path = CommandLine.arguments[index + 1]
+    let sample = UpdateRelease(
+        version: "9.9.0", notes: "What changed\n- A window that shows what ran while the lid was closed\n- Updates install from the menu",
+        download: URL(string: "https://example.com/App.dmg")!, page: URL(string: "https://example.com")!)
+    let phase: Updater.Phase
+    switch CommandLine.arguments[index + 2] {
+    case "checking": phase = .checking
+    case "uptodate": phase = .upToDate
+    case "downloading": phase = .downloading(sample)
+    case "failed": phase = .failed("The update did not install. The new app is not signed by thelaunch.space, so it was not installed.", sample)
+    default: phase = .available(sample)
+    }
+    MainActor.assumeIsolated {
+        _ = NSApplication.shared
+        Updater.snapshot(phase, dark: CommandLine.arguments.contains("--dark"), to: path)
+    }
+    exit(0)
 }
 
 // A second copy would read the first copy's session marker as a crash leftover and reset sleep.

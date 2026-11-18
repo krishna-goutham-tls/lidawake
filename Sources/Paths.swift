@@ -2,7 +2,8 @@ import Foundation
 
 enum Paths {
     static let bundleID = "space.thelaunch.lidawake"
-    static let version = "0.4.0"
+    /// From Info.plist, which build.sh writes. "dev" when run outside the app bundle.
+    static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
 
     static var home: URL { FileManager.default.homeDirectoryForCurrentUser }
     static var supportDir: URL {

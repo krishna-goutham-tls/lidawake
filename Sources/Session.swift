@@ -131,6 +131,7 @@ final class Session: NSObject {
     private var powerSource: CFRunLoopSource?
     private var thermalObserver: NSObjectProtocol?
     private var didShutdown = false
+    private let processes = ActivityMonitor()
 
     var cutoff: Int {
         get {
@@ -220,6 +221,7 @@ final class Session: NSObject {
         }
 
         startMonitoring()
+        processes.reset()
         heartbeat()
         onChange?()
     }
@@ -455,7 +457,9 @@ final class Session: NSObject {
         let power = PowerInfo.snapshot()
         let battery = power.batteryPercent.map { "\($0)%" } ?? "none"
         let thermal = PowerInfo.thermalName(PowerInfo.effectiveThermal().state)
-        Log.write("heartbeat lid=\(PowerInfo.lidName(PowerInfo.lidClosed())) battery=\(battery) power=\(power.onBattery ? "battery" : "ac") thermal=\(thermal) sleepDisabled=\(flag(Pmset.sleepDisabled()))")
+        // What the agents and macOS did since the last heartbeat, for the activity window.
+        let activity = processes.sample().map { " " + $0 } ?? ""
+        Log.write("heartbeat lid=\(PowerInfo.lidName(PowerInfo.lidClosed())) battery=\(battery) power=\(power.onBattery ? "battery" : "ac") thermal=\(thermal) sleepDisabled=\(flag(Pmset.sleepDisabled()))\(activity)")
     }
 
     private func flag(_ value: Bool?) -> String {

@@ -6,13 +6,13 @@
 
 A free, open source menu bar app for macOS. Click the cup, close the lid, and your MacBook keeps running, so Claude Code, Codex, Droid and other CLI agents keep working through the night.
 
-It turns itself off and sleeps the Mac at a battery level you pick, or when macOS reports a heat warning. When you open the lid, it tells you whether the Mac really stayed awake.
+It turns itself off and sleeps the Mac at a battery level you pick, or when macOS reports a heat warning. When you open the lid, it tells you whether the Mac really stayed awake, and which agents worked.
 
 <p align="center">
   <img src="docs/demo.gif" alt="One click on the cup in the menu bar, then the lid closes and the agent keeps working through the night" width="100%">
 </p>
 
-Version 0.5.0 · macOS 14 or later · Apple silicon and Intel · no network code · MIT licence
+Version 0.6.0 · macOS 14 or later · Apple silicon and Intel · no analytics · MIT licence
 
 ## Install
 
@@ -34,7 +34,7 @@ git clone https://github.com/krishna-goutham-tls/lidawake.git ~/lidawake
 ~/lidawake/scripts/install.sh
 ```
 
-The script downloads the latest release from GitHub and copies the app to `/Applications`. It needs no sudo and no developer tools. GitHub's download count is the only install count this project keeps. The app itself never goes online.
+The script downloads the latest release from GitHub and copies the app to `/Applications`. It needs no sudo and no developer tools. GitHub's download count is the only install count this project keeps. The app itself goes online only to check for updates.
 
 To build it on your Mac instead, run `~/lidawake/scripts/install.sh --from-source`. That needs Apple's Command Line Tools (`xcode-select --install`).
 
@@ -57,6 +57,19 @@ To build it on your Mac instead, run `~/lidawake/scripts/install.sh --from-sourc
 3. Click the cup again to turn it off. Off means normal sleep.
 
 Right-click the cup for settings: time on and battery, the battery cutoff, the log, removing the permission, and Quit.
+
+## What happened while the lid was closed
+
+Open the lid and click the panel under the cup, or right-click the cup and choose **While the lid was closed…**. A window shows the last lid close:
+
+- how long the Mac stayed awake, and any stretch where it may have slept
+- one row per agent (Claude Code, Codex, Droid, Gemini CLI and others), with the minutes it worked
+- one row for macOS jobs: Time Machine backup, Spotlight indexing, software update, iCloud sync, Photos analysis
+- the battery from start to end
+
+Move the pointer over the chart to see one minute. Pick an earlier lid close in the list on the right. **Copy image** puts a 1600 x 900 picture of the night on the clipboard. The picture has no file, folder or project names.
+
+"Worked" is an estimate. The app counts a minute as work when an agent's processes used the processor. An agent that waits a long time for its model can read as quiet.
 
 ## When it stops
 
@@ -84,7 +97,11 @@ The whole sudoers rule is one line:
 you ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1
 ```
 
-There is no network code and no analytics. Nothing leaves your Mac. macOS shows a one-time "Background Items Added" alert for the watchdog, and lists it under System Settings → General → Login Items.
+While the switch is on, the app reads the process list once a minute: process names and processor time, nothing else. It uses them to tell which agents worked, and writes one line to the log. It opens no file of yours.
+
+The app goes online for one thing: updates. Once a day the app asks GitHub whether a newer version exists. If one does, a small window offers it: click Update and it installs and reopens by itself. The check sends nothing about you or your Mac. Turn it off with "Check daily" in that window, and check by hand from the menu with **Check for updates…**.
+
+There are no analytics, and no log line, screen or file of yours leaves your Mac. macOS shows a one-time "Background Items Added" alert for the watchdog, and lists it under System Settings → General → Login Items.
 
 ## Why not caffeinate
 
@@ -119,6 +136,13 @@ build/LidAwake.app/Contents/MacOS/LidAwake --selftest
 build/LidAwake.app/Contents/MacOS/LidAwake --preview-panel setUp /tmp/setup.png [--dark]
 #   screens: setUp, turnOn, waiting, failed, ready, info, on, off
 
+# The activity window from any log, with no switch and no session. Both only read the log
+build/LidAwake.app/Contents/MacOS/LidAwake --report [--log file]
+build/LidAwake.app/Contents/MacOS/LidAwake --preview-report /tmp/report.png [--dark] [--card] [--log file] [--pick n]
+
+# Print what one heartbeat would log about agents and macOS jobs (takes 21 s)
+build/LidAwake.app/Contents/MacOS/LidAwake --sample-activity
+
 # Regenerate the app icon after changing Sources/AppIcon.swift
 build/LidAwake.app/Contents/MacOS/LidAwake --render-iconset /tmp/AppIcon.iconset
 iconutil -c icns /tmp/AppIcon.iconset -o Resources/AppIcon.icns
@@ -143,6 +167,7 @@ To release, raise the version in `build.sh`, build, then run the shared kit: `ac
 | 10 | Leave it off for 10 min, then on for 10 min with the panel closed | Activity Monitor shows 0% CPU both times |
 | 11 | Switch on, close the lid for 10 min, open it and unlock | A panel says "Your Mac stayed awake 10 min with the lid closed." The menu shows a `last lid close` line |
 | 12 | Switch on, then in Terminal run `sudo pmset -a disablesleep 0` | Within 30 s the log says closed-lid mode was turned on again, and `SleepDisabled` is `1` |
+| 13 | Start an agent task, switch on, close the lid for 30 min, open it, click the panel | The window shows a row for that agent with about the right minutes. **Copy image** pastes into a post |
 
 The launch video is code too: Remotion with a MacBook modelled in three.js. See [`launch-video/`](launch-video).
 

@@ -25,6 +25,8 @@ struct Feedback: Equatable {
     let detail: String?
     /// Seconds before the panel closes itself. A lid report stays long enough to read.
     var hold: Double = 1.8
+    /// A lid report opens the activity window when clicked.
+    var opensReport = false
 }
 
 @MainActor
@@ -38,6 +40,7 @@ final class PanelModel: ObservableObject {
     var runSetup: () -> SetupOutcome = { .cancelled }
     var switchOn: () -> Void = {}
     var close: () -> Void = {}
+    var openReport: () -> Void = {}
 
     var safetyLine: String { "stops at \(cutoff)% battery or a heat warning" }
 
@@ -152,7 +155,7 @@ struct PanelView: View {
         Group {
             switch model.screen {
             case let .feedback(feedback):
-                FeedbackView(feedback: feedback)
+                FeedbackView(feedback: feedback, open: model.openReport)
             default:
                 GuideView(model: model)
                     .frame(width: 300)
@@ -306,8 +309,19 @@ private struct GuideView: View {
 
 private struct FeedbackView: View {
     let feedback: Feedback
+    var open: () -> Void = {}
 
     var body: some View {
+        if feedback.opensReport {
+            Button(action: open) { content }
+                .buttonStyle(.plain)
+                .help("See what happened while the lid was closed")
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack(alignment: .center, spacing: 11) {
             CupMark(on: feedback.on, size: 18)
             VStack(alignment: .leading, spacing: 2) {
@@ -317,10 +331,17 @@ private struct FeedbackView: View {
                     MonoLine(text: detail)
                 }
             }
+            if feedback.opensReport {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 3)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .fixedSize()
+        .contentShape(Rectangle())
     }
 }
 

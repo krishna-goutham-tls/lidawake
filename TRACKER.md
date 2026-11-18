@@ -17,6 +17,21 @@ Ship criteria are in `../brainstorming/mvp-plan.md`. Tick each one after it pass
 - [ ] 11. Lid report (0.4.0): open the lid after 10 min closed while on, unlock, and a panel says how long it stayed awake (README test 11)
 - [ ] 12. Lid lock check (0.4.0): `sudo pmset -a disablesleep 0` while on is undone within 30 s (README test 12)
 
+## Updates
+
+- [x] In-app updater (2026-11-18, not released): daily GitHub check, update window, one-click install with a Developer ID check, "Check for updates…" in the menu. Tested against the real GitHub release
+- [ ] First release with the updater (needs Krishna's go). Copies from before it never update themselves
+
+## Activity window (0.6.0, built 2026-11-18, not released)
+
+- [x] Window "While the lid was closed": time awake, a row per agent, a macOS row, battery, earlier lid closes, Copy image. Reads the log, so old nights show too
+- [x] Heartbeat logs agent and macOS processor time (`agents=`, `macos=`)
+- [ ] 13. One real night on Krishna's Mac with 0.6.0: the agent rows match what the agents did (README test 13)
+- [ ] Check the "working" threshold (0.5 processor seconds a minute) against that night. Measured on 2026-11-18 over 14 minutes only: a Claude Code session in a turn used 0.54 to 1.4, idle ones 0.1 to 0.45, so the margin is small
+- [ ] Pointer line under the chart and Copy image, tried by hand
+- [ ] Release 0.6.0 (needs Krishna's go)
+- Left out for now: project name per agent (a client name could land in a posted image), data sent and received, apps no agent started
+
 ## Launch (open source, 2026-10-14)
 
 - [x] Public repo `krishna-goutham-tls/lidawake`, MIT, README with install line, demo GIF, proof and trust section

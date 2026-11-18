@@ -16,7 +16,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let removeItem = NSMenuItem(title: "Remove closed-lid permission", action: nil, keyEquivalent: "")
     private var signalSources: [DispatchSourceSignal] = []
     private let panel = PanelController()
+    private let report = ReportWindowController()
     private static let welcomeSeenKey = "hasSeenWelcome"
+    /// Set just before an update relaunches the app, so a switch that was on comes back on.
+    private static let resumeKey = "resumeAfterUpdate"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.write("LidAwake \(Paths.version) started (pid \(ProcessInfo.processInfo.processIdentifier))")
@@ -56,6 +59,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.session.switchOn()
             self?.showFeedback()
         }
+        panel.model.openReport = { [weak self] in
+            self?.panel.close()
+            self?.showReport()
+        }
+        report.model.openLog = { [weak self] in self?.openLog() }
+
+        Updater.shared.willRelaunch = { [weak self] in
+            UserDefaults.standard.set(self?.session.isOn == true, forKey: Self.resumeKey)
+            Log.write("relaunching to install an update (switch was \(self?.session.isOn == true ? "on" : "off"))")
+        }
+        Updater.shared.start()
+        if UserDefaults.standard.bool(forKey: Self.resumeKey) {
+            UserDefaults.standard.removeObject(forKey: Self.resumeKey)
+            Log.write("updated to \(Paths.version): turning the switch back on")
+            session.switchOn()
+        }
         if !UserDefaults.standard.bool(forKey: Self.welcomeSeenKey) {
             UserDefaults.standard.set(true, forKey: Self.welcomeSeenKey)
             // The status item has no position on screen until the first layout pass.
@@ -91,7 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func presentReportWhenVisible() {
         guard let report = pendingReport, PowerInfo.lidClosed() != true, !Self.screenLocked() else { return }
         pendingReport = nil
-        showPanel(.feedback(Feedback(on: session.isOn, title: report.title, detail: report.detail, hold: 20)))
+        showPanel(.feedback(Feedback(on: session.isOn, title: report.title, detail: report.detail, hold: 20, opensReport: true)))
     }
 
     private static func screenLocked() -> Bool {
@@ -197,6 +216,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(cutoffItem)
         menu.addItem(.separator())
 
+        let reportItem = NSMenuItem(title: "While the lid was closed…", action: #selector(showReport), keyEquivalent: "")
+        reportItem.target = self
+        menu.addItem(reportItem)
+
         let howItem = NSMenuItem(title: "How it works…", action: #selector(showHowItWorks), keyEquivalent: "")
         howItem.target = self
         menu.addItem(howItem)
@@ -207,6 +230,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         removeItem.target = self
         removeItem.action = #selector(removeClosedLid)
         menu.addItem(removeItem)
+
+        menu.addItem(Updater.shared.menuItem)
 
         let logItem = NSMenuItem(title: "Open log", action: #selector(openLog), keyEquivalent: "")
         logItem.target = self
@@ -298,6 +323,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func menuToggle() {
         primaryToggle()
+    }
+
+    @objc private func showReport() {
+        report.show()
     }
 
     @objc private func showHowItWorks() {
